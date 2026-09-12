@@ -1,10 +1,11 @@
-MODO CAMPO PWA — V1
+MODO CAMPO PWA — V2 INTEGRADA
 
-1. Publique esta pasta em um endereço HTTPS estático (GitHub Pages, Cloudflare Pages, Firebase Hosting etc.).
-2. Abra o endereço no celular/computador enquanto estiver online.
-3. Use "Adicionar à tela inicial" / "Instalar aplicativo" no navegador.
-4. Importe o backup JSON gerado pelo mapa principal.
-5. Enquadre a área de trabalho e clique em "Preparar mapa visível".
-6. Depois disso, feche o navegador e teste em modo avião abrindo pelo ícone instalado.
+Substitua no GitHub os arquivos da pasta PWA_Modo_Campo_V1 por estes arquivos.
+A URL pública permanece a mesma.
 
-IMPORTANTE: o endereço /exec do Google Apps Script continua sendo o sistema online. Esta PWA é o cliente de campo offline. O Apps Script não hospeda service worker com o escopo necessário para tornar a própria página /exec reabrível offline.
+Novidades:
+- recebe automaticamente pacote do mapa V7.1.9;
+- demandas, operações e planejamento ficam salvos offline;
+- mantém importação manual de backup;
+- mapa-base pode ser preparado para uso sem internet;
+- Service Worker V2 remove cache antigo do aplicativo.

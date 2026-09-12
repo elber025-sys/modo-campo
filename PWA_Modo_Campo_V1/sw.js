@@ -1,11 +1,15 @@
-const SHELL='modo-campo-v1';
+const SHELL='modo-campo-v2';
+const TILE='campo-tiles-v2';
 const ASSETS=['./','./index.html','./manifest.webmanifest','https://unpkg.com/leaflet@1.9.4/dist/leaflet.css','https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(SHELL).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+self.addEventListener('activate',e=>e.waitUntil((async()=>{const ks=await caches.keys();await Promise.all(ks.filter(k=>k.startsWith('modo-campo-v')&&k!==SHELL).map(k=>caches.delete(k)));await self.clients.claim()})()));
 self.addEventListener('fetch',e=>{
+  if(e.request.method!=='GET')return;
   const u=new URL(e.request.url);
   if(u.hostname.includes('tile.openstreetmap.org')){
-    e.respondWith(caches.open('campo-tiles-v1').then(async c=>{const hit=await c.match(e.request);if(hit)return hit;try{const r=await fetch(e.request);if(r.ok)c.put(e.request,r.clone());return r}catch(_){return new Response('',{status:504})}}));return;
+    e.respondWith(caches.open(TILE).then(async c=>{const hit=await c.match(e.request);if(hit)return hit;try{const r=await fetch(e.request);if(r.ok)c.put(e.request,r.clone());return r}catch(_){return new Response('',{status:504})}}));return;
   }
-  e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(resp=>{if(e.request.method==='GET'&&resp.ok)caches.open(SHELL).then(c=>c.put(e.request,resp.clone()));return resp}).catch(()=>caches.match('./index.html'))));
+  if(u.origin===self.location.origin || u.hostname==='unpkg.com'){
+    e.respondWith((async()=>{const c=await caches.open(SHELL);const hit=await c.match(e.request);if(hit)return hit;try{const r=await fetch(e.request);if(r&&r.ok)c.put(e.request,r.clone());return r}catch(_){return (await c.match('./index.html'))||new Response('Offline',{status:503})}})());
+  }
 });

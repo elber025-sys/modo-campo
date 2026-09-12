@@ -1,16 +1,96 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0f766e"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><title>Modo Campo</title><style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#172033}header{height:58px;padding:10px 14px;background:#fff;border-bottom:1px solid #ddd;display:flex;align-items:center;justify-content:space-between}#map{height:calc(100vh - 58px)}.panel{position:fixed;z-index:1000;left:10px;top:70px;width:min(330px,calc(100vw - 20px));background:white;border:1px solid #ccd6e0;border-radius:12px;padding:12px;box-shadow:0 6px 22px #0002}.row{display:flex;gap:7px;flex-wrap:wrap}.btn{border:0;border-radius:8px;padding:9px 10px;font-weight:700;cursor:pointer}.pri{background:#0f766e;color:white}.sec{background:#eef2f7}.status{font-size:12px;margin:8px 0}.hide{display:none}input[type=file]{width:100%;font-size:12px}.badge{padding:5px 8px;border-radius:20px;background:#eef2f7;font-size:12px}.offline{background:#fff3cd}.marker{background:#b91c1c;color:#fff;border:2px solid #fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 1px 5px #0006}</style></head><body>
-<header><b>📲 Demandas Operacionais — Modo Campo</b><span id="net" class="badge">...</span></header><div id="map"></div>
-<div class="panel"><b>Pacote de campo</b><div id="info" class="status">Nenhum pacote importado.</div><input id="file" type="file" accept="application/json,.json"><div class="row" style="margin-top:8px"><button class="btn pri" id="importar">📂 Importar backup</button><button class="btn sec" id="gps">📍 Minha localização</button><button class="btn sec" id="tiles">⬇️ Preparar mapa visível</button></div><div class="status">Depois de abrir esta PWA uma vez com internet e preparar a área, ela poderá ser aberta novamente pelo ícone instalado, mesmo sem conexão.</div></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
-const map=L.map('map').setView([-19.45,-44.25],9);const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);let group=L.layerGroup().addTo(map), dados=[];
-function net(){const e=document.getElementById('net');e.textContent=navigator.onLine?'● Online':'● Offline';e.className='badge '+(navigator.onLine?'':'offline')}addEventListener('online',net);addEventListener('offline',net);net();
-function key(d){return String(d.codigo||d.geocod||d.GEOCOD_IEF||'')}
-function render(){group.clearLayers();const pts=[];dados.forEach(d=>{const lat=Number(d.lat??d.latitude),lon=Number(d.lon??d.lng??d.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))return;pts.push([lat,lon]);const m=L.marker([lat,lon],{icon:L.divIcon({className:'',html:'<div class="marker">•</div>',iconSize:[28,28],iconAnchor:[14,14]})});m.bindPopup('<b>'+key(d)+'</b><br>'+(d.municipio||'')+'<br>'+(d.natureza||d.tipo||''));m.addTo(group)});if(pts.length)map.fitBounds(pts,{padding:[25,25],maxZoom:15});document.getElementById('info').textContent=dados.length+' demanda(s) disponíveis offline.'}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<title>Modo Campo</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#172033}header{height:58px;padding:10px 14px;background:#fff;border-bottom:1px solid #ddd;display:flex;align-items:center;justify-content:space-between;gap:10px}#map{height:calc(100vh - 58px)}.panel{position:fixed;z-index:1000;left:10px;top:70px;width:min(350px,calc(100vw - 20px));background:white;border:1px solid #ccd6e0;border-radius:12px;padding:12px;box-shadow:0 6px 22px #0002;max-height:calc(100vh - 86px);overflow:auto}.row{display:flex;gap:7px;flex-wrap:wrap}.btn{border:0;border-radius:8px;padding:9px 10px;font-weight:700;cursor:pointer}.pri{background:#0f766e;color:white}.sec{background:#eef2f7}.status{font-size:12px;margin:8px 0;line-height:1.4}.hide{display:none}input[type=file]{width:100%;font-size:12px}.badge{padding:5px 8px;border-radius:20px;background:#eef2f7;font-size:12px;white-space:nowrap}.offline{background:#fff3cd}.ok{background:#dcfce7;color:#166534}.warn{background:#fff7ed;color:#9a3412}.marker{background:#b91c1c;color:#fff;border:2px solid #fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 1px 5px #0006}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0}.sum{border:1px solid #e2e8f0;border-radius:8px;padding:7px;background:#f8fafc;text-align:center}.sum b{display:block;font-size:16px}.sum span{font-size:9px;color:#64748b}.sync{padding:8px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;margin:8px 0;font-size:11px;line-height:1.4}.sync.ok{background:#f0fdf4;border-color:#bbf7d0}.sync.err{background:#fff1f2;border-color:#fecdd3;color:#991b1b}.mini{font-size:10px;color:#64748b}.leaflet-control-layers{max-width:260px}
+@media(max-width:700px){header{height:54px;padding:8px 10px;font-size:13px}#map{height:calc(100vh - 54px)}.panel{top:64px;left:8px;width:min(330px,calc(100vw - 16px));max-height:58vh}.btn{padding:8px 9px;font-size:11px}.summary{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<header><b>📲 Demandas Operacionais — Modo Campo</b><span id="net" class="badge">...</span></header>
+<div id="map"></div>
+<div class="panel">
+  <b>Pacote de campo</b>
+  <div id="sync" class="sync">Nenhum pacote recebido automaticamente.</div>
+  <div id="resumo" class="summary">
+    <div class="sum"><b id="nDem">0</b><span>Demandas</span></div>
+    <div class="sum"><b id="nOps">0</b><span>Operações</span></div>
+    <div class="sum"><b id="nPlan">0</b><span>Equipes planejadas</span></div>
+  </div>
+  <div id="info" class="status">Nenhum pacote importado.</div>
+  <input id="file" type="file" accept="application/json,.json">
+  <div class="row" style="margin-top:8px">
+    <button class="btn pri" id="importar">📂 Importar backup</button>
+    <button class="btn sec" id="gps">📍 Minha localização</button>
+    <button class="btn sec" id="tiles">⬇️ Preparar mapa visível</button>
+  </div>
+  <div class="status">Use <b>📲 Enviar ao Modo Campo</b> no mapa online para receber automaticamente demandas, operações e planejamento. Depois prepare a área do mapa para uso sem internet.</div>
+  <div id="ultima" class="mini"></div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const STORE='CAMPO_PACOTE_V2', TILE_CACHE='campo-tiles-v2';
+const map=L.map('map').setView([-19.45,-44.25],9);
+const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+const demandLayer=L.layerGroup().addTo(map), opLayer=L.layerGroup().addTo(map), planLayer=L.layerGroup().addTo(map);
+L.control.layers(null,{'Demandas':demandLayer,'Operações':opLayer,'Planejamento':planLayer},{collapsed:true}).addTo(map);
+let pacote={demandas:[],operacoes:[],planejamento:[],localStorage:{}};
+
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function net(){const e=document.getElementById('net');e.textContent=navigator.onLine?'● Online':'● Offline';e.className='badge '+(navigator.onLine?'ok':'offline')}addEventListener('online',net);addEventListener('offline',net);net();
+function key(d){return String(d.codigo||d.geocod||d.GEOCOD_IEF||'Sem código')}
+function coord(d){const lat=Number(d.lat??d.latitude),lon=Number(d.lon??d.lng??d.longitude);return Number.isFinite(lat)&&Number.isFinite(lon)?[lat,lon]:null}
+function corEquipe(i){const h=(Number(i||1)*61)%360;return `hsl(${h} 72% 42%)`}
+function popupDemanda(d){return '<b>'+esc(key(d))+'</b><br>'+(d.tipo?'<b>Tipo:</b> '+esc(d.tipo)+'<br>':'')+(d.municipio?'<b>Município:</b> '+esc(d.municipio)+'<br>':'')+(d.natureza?'<b>Natureza:</b> '+esc(d.natureza)+'<br>':'')+(d.car?'<b>CAR:</b> '+esc(d.car)+'<br>':'')}
+function render(){
+  demandLayer.clearLayers();opLayer.clearLayers();planLayer.clearLayers();
+  const pts=[];
+  (pacote.demandas||[]).forEach(d=>{const c=coord(d);if(!c)return;pts.push(c);L.marker(c,{icon:L.divIcon({className:'',html:'<div class="marker">•</div>',iconSize:[28,28],iconAnchor:[14,14]})}).bindPopup(popupDemanda(d)).addTo(demandLayer)});
+  (pacote.operacoes||[]).forEach((op,i)=>{const cor=corEquipe(i+1);let l=null;if(Array.isArray(op.poligono)&&op.poligono.length>=3){const ps=op.poligono.map(p=>[Number(p.lat),Number(p.lng)]).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));if(ps.length>=3)l=L.polygon(ps,{color:cor,weight:3,fillColor:cor,fillOpacity:.08})}else if(op.centro&&Number.isFinite(Number(op.centro.lat))&&Number.isFinite(Number(op.centro.lng))){l=L.circle([Number(op.centro.lat),Number(op.centro.lng)],{radius:Number(op.raio)||150,color:cor,weight:3,fillOpacity:.06})}if(l)l.bindPopup('<b>'+esc(op.nome||('Operação '+(i+1)))+'</b><br>Status: '+esc(op.status||'PLANEJADA')).addTo(opLayer)});
+  (pacote.planejamento||[]).forEach(p=>{if(!p||!p.ok)return;const cor=corEquipe(p.equipe);(p.jornadas||[]).forEach(j=>(j.pontos||[]).forEach((d,ix)=>{const c=coord(d);if(!c)return;L.circleMarker(c,{radius:7,color:'#fff',weight:2,fillColor:cor,fillOpacity:1}).bindTooltip('<b>Equipe '+esc(p.equipe)+' · Dia '+esc(j.dia)+'</b><br>'+esc(key(d))+'<br>'+esc(d.municipio||'')).addTo(planLayer)}))});
+  if(pts.length)map.fitBounds(pts,{padding:[25,25],maxZoom:15});
+  document.getElementById('nDem').textContent=(pacote.demandas||[]).length;
+  document.getElementById('nOps').textContent=(pacote.operacoes||[]).length;
+  document.getElementById('nPlan').textContent=(pacote.planejamento||[]).filter(p=>p&&p.ok).length;
+  document.getElementById('info').textContent=(pacote.demandas||[]).length+' demanda(s) disponíveis offline.';
+  if(pacote.salvoEm){try{document.getElementById('ultima').textContent='Pacote salvo em '+new Date(pacote.salvoEm).toLocaleString('pt-BR')}catch(_){}}
+}
+function salvarPacote(p,origem){
+  p=p||{};pacote={formato:p.formato||'MAPA_DEMANDAS_MODO_CAMPO',versao:p.versao||'',salvoEm:p.salvoEm||new Date().toISOString(),demandas:Array.isArray(p.demandas)?p.demandas:extrair(p),operacoes:Array.isArray(p.operacoes)?p.operacoes:[],planejamento:Array.isArray(p.planejamento)?p.planejamento:[],localStorage:p.localStorage||{}};
+  localStorage.setItem(STORE,JSON.stringify(pacote));render();
+  const s=document.getElementById('sync');s.className='sync ok';s.innerHTML='✅ Pacote '+esc(origem||'recebido')+' e salvo neste aparelho.<br><b>'+pacote.demandas.length+'</b> demanda(s), <b>'+pacote.operacoes.length+'</b> operação(ões).';
+}
 function extrair(o){if(Array.isArray(o))return o;if(Array.isArray(o.registros))return o.registros;if(o.payload&&Array.isArray(o.payload.registros))return o.payload.registros;if(Array.isArray(o.demandas))return o.demandas;if(Array.isArray(o.operacoes)){const a=[];o.operacoes.forEach(x=>(x.demandasOriginais||[]).forEach(d=>a.push(d)));return a}return []}
-document.getElementById('importar').onclick=async()=>{const f=document.getElementById('file').files[0];if(!f)return alert('Escolha o arquivo JSON de backup.');try{const o=JSON.parse(await f.text());dados=extrair(o);localStorage.setItem('CAMPO_PACOTE',JSON.stringify({salvoEm:new Date().toISOString(),dados}));render()}catch(e){alert('Não foi possível importar: '+e.message)}};
-try{const c=JSON.parse(localStorage.getItem('CAMPO_PACOTE')||'null');if(c&&Array.isArray(c.dados)){dados=c.dados;render()}}catch(_){ }
+
+document.getElementById('importar').onclick=async()=>{const f=document.getElementById('file').files[0];if(!f)return alert('Escolha o arquivo JSON de backup.');try{const o=JSON.parse(await f.text());salvarPacote(o,'importado do backup')}catch(e){alert('Não foi possível importar: '+e.message)}};
+try{const c=JSON.parse(localStorage.getItem(STORE)||'null');if(c){pacote=c;render();const s=document.getElementById('sync');s.textContent='Pacote local restaurado do armazenamento deste aparelho.'}}catch(_){ }
+
 document.getElementById('gps').onclick=()=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],16),e=>alert('Localização indisponível: '+e.message),{enableHighAccuracy:true,timeout:15000}):alert('GPS não disponível.');
-document.getElementById('tiles').onclick=async()=>{if(!navigator.onLine)return alert('Conecte-se à internet para preparar o mapa.');const z0=Math.max(8,map.getZoom()-1),z1=Math.min(17,map.getZoom()+2),b=map.getBounds(),urls=[];function tx(lon,z){return Math.floor((lon+180)/360*2**z)}function ty(lat,z){lat=Math.max(-85.0511,Math.min(85.0511,lat));return Math.floor((1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*2**z)}for(let z=z0;z<=z1;z++){let x1=tx(b.getWest(),z),x2=tx(b.getEast(),z),y1=ty(b.getNorth(),z),y2=ty(b.getSouth(),z);for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++)urls.push(`https://tile.openstreetmap.org/${z}/${x}/${y}.png`)}if(urls.length>800)return alert('Área muito grande ('+urls.length+' partes). Aproxime o mapa.');const c=await caches.open('campo-tiles-v1');let ok=0;for(const u of urls){try{if(!(await c.match(u))){const r=await fetch(u);if(r.ok)await c.put(u,r.clone())}ok++}catch(_){}}alert('Mapa preparado: '+ok+' de '+urls.length+' partes salvas.')};
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');
-</script></body></html>
+document.getElementById('tiles').onclick=async()=>{if(!navigator.onLine)return alert('Conecte-se à internet para preparar o mapa.');const z0=Math.max(8,map.getZoom()-1),z1=Math.min(17,map.getZoom()+2),b=map.getBounds(),urls=[];function tx(lon,z){return Math.floor((lon+180)/360*2**z)}function ty(lat,z){lat=Math.max(-85.0511,Math.min(85.0511,lat));return Math.floor((1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*2**z)}for(let z=z0;z<=z1;z++){let x1=tx(b.getWest(),z),x2=tx(b.getEast(),z),y1=ty(b.getNorth(),z),y2=ty(b.getSouth(),z);for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++)urls.push(`https://tile.openstreetmap.org/${z}/${x}/${y}.png`)}if(urls.length>800)return alert('Área muito grande ('+urls.length+' partes). Aproxime o mapa.');const c=await caches.open(TILE_CACHE);let ok=0;for(let i=0;i<urls.length;i++){const u=urls[i];try{if(!(await c.match(u))){const r=await fetch(u,{cache:'reload'});if(r.ok)await c.put(u,r.clone())}ok++}catch(_){ }if(i%25===0)document.getElementById('sync').textContent='Preparando mapa: '+(i+1)+'/'+urls.length}alert('Mapa preparado: '+ok+' de '+urls.length+' partes salvas.');render()};
+
+window.modoCampoReceberPacote=function(r){
+  const s=document.getElementById('sync');
+  if(!r||!r.ok||!r.pacote){s.className='sync err';s.textContent='❌ '+((r&&r.mensagem)||'Não foi possível receber o pacote.');return}
+  try{salvarPacote(r.pacote,'recebido do mapa online');history.replaceState({},'',location.pathname)}catch(e){s.className='sync err';s.textContent='❌ Falha ao salvar pacote: '+e.message}
+};
+function receberAutomatico(){
+  const q=new URLSearchParams(location.search),codigo=q.get('pacote'),chave=q.get('chave'),api=q.get('api');
+  if(!codigo||!chave||!api)return;
+  const s=document.getElementById('sync');s.textContent='☁️ Recebendo pacote do mapa online…';
+  if(!navigator.onLine){s.className='sync err';s.textContent='Sem internet para receber um novo pacote. O pacote anterior permanece salvo.';return}
+  const sep=api.includes('?')?'&':'?';
+  const src=api+sep+'api=modoCampoPacote&codigo='+encodeURIComponent(codigo)+'&chave='+encodeURIComponent(chave)+'&callback=modoCampoReceberPacote&_='+Date.now();
+  const sc=document.createElement('script');sc.src=src;sc.async=true;sc.onerror=()=>{s.className='sync err';s.textContent='❌ Não foi possível conectar ao mapa online para baixar o pacote.'};document.head.appendChild(sc);
+}
+
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').then(r=>{try{r.update()}catch(_){}});
+receberAutomatico();
+</script>
+</body>
+</html>
