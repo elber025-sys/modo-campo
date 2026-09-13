@@ -1,12 +1,12 @@
 {
-  "name": "Demandas Operacionais — Modo Campo V7.1",
+  "name": "Demandas Operacionais — Modo Campo V8.1",
   "short_name": "Modo Campo",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0f766e",
-  "description": "Modo campo offline com planejamento e seleção inteligente de PDFs das demandas disponíveis sem internet",
+  "description": "Modo campo offline com painel ocultável, planejamento, PDFs e satélite para uso sem internet",
   "icons": [
     {
       "src": "icons/icon-192.png",
