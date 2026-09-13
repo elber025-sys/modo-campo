@@ -52,6 +52,65 @@
 }
 </style>
 
+
+<style id="v102-panel-compact-fix">
+/* V1.2 — ao ocultar, o painel deixa de bloquear mapa/camadas */
+.panel.min{
+  left:58px !important;
+  top:100px !important;
+  width:auto !important;
+  min-width:0 !important;
+  max-width:none !important;
+  max-height:none !important;
+  padding:0 !important;
+  margin:0 !important;
+  overflow:visible !important;
+  background:transparent !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  pointer-events:none !important;
+}
+
+/* No estado minimizado, some inclusive o título "Pacote de campo". */
+.panel.min .panel-title{
+  display:none !important;
+}
+
+/* Apenas o botão compacto continua clicável. */
+.panel.min .togglePanel{
+  display:block !important;
+  pointer-events:auto !important;
+  position:relative !important;
+  z-index:1250 !important;
+  width:auto !important;
+  min-width:0 !important;
+  margin:0 !important;
+  padding:8px 11px !important;
+  white-space:nowrap !important;
+  border-radius:9px !important;
+  box-shadow:0 2px 8px #0003 !important;
+}
+
+/* Garante que controles do Leaflet fiquem clicáveis acima do mapa. */
+.leaflet-control-container,
+.leaflet-control-layers,
+.leaflet-control-zoom{
+  pointer-events:auto !important;
+}
+
+@media(max-width:700px){
+  .panel.min{
+    left:54px !important;
+    right:auto !important;
+    top:64px !important;
+  }
+  .panel.min .togglePanel{
+    padding:7px 9px !important;
+    font-size:11px !important;
+  }
+}
+</style>
 </head>
 <body>
 <header><b>📲 Demandas Operacionais — Modo Campo</b><span id="net" class="badge">...</span></header>
@@ -277,7 +336,7 @@ document.getElementById('btnCarOps').onclick=()=>{const aa=pacote.carAreas||[];i
 
 ['fBusca'].forEach(id=>document.getElementById(id)?.addEventListener('input',render));['fPrazo','fTipo','fMun','fEquipe','fDia','fSomentePlano'].forEach(id=>document.getElementById(id)?.addEventListener('change',()=>{if(id==='fEquipe')popularFiltrosV4();render()}));
 document.getElementById('limparFiltro').onclick=()=>{['fBusca'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});['fPrazo','fTipo','fMun','fEquipe','fDia'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});document.getElementById('fSomentePlano').checked=false;popularFiltrosV4();render()};
-document.getElementById('togglePanel').onclick=()=>{const p=document.getElementById('panel'),b=document.getElementById('togglePanel');p.classList.toggle('min');const fechado=p.classList.contains('min');b.textContent=fechado?'▶ Mostrar painel':'◀ Ocultar painel';b.title=fechado?'Mostrar painel':'Ocultar painel';setTimeout(()=>map.invalidateSize(),60)};
+document.getElementById('togglePanel').onclick=()=>{const p=document.getElementById('panel'),b=document.getElementById('togglePanel');p.classList.toggle('min');const fechado=p.classList.contains('min');b.textContent=fechado?'☰ Mostrar painel':'◀ Ocultar painel';b.title=fechado?'Mostrar painel':'Ocultar painel';p.setAttribute('aria-collapsed',fechado?'true':'false');setTimeout(()=>map.invalidateSize(),60)};
 map.on('zoomend',render);
 document.getElementById('btnEquipe').onclick=()=>{const js=jornadasSelecionadas(),pts=[];js.forEach(x=>(x.j.pontos||[]).forEach(d=>{const c=coord(d);if(c)pts.push(c)}));if(!pts.length)return alert('Selecione uma equipe/dia que possua pontos planejados.');map.fitBounds(L.latLngBounds(pts),{padding:[40,40],maxZoom:15})};
 document.getElementById('btnProxima').onclick=()=>{const ju=jornadaUnica();if(!ju)return alert('Selecione uma equipe e um dia para seguir a sequência planejada.');const pts=ju.j.pontos||[];if(!pts.length)return alert('A jornada selecionada não possui pontos.');let ix=navIndex();const concl=concluidoSet();while(ix<pts.length-1&&concl.has(ix))ix++;abrirPontoPlanejado(ix)};
@@ -290,5 +349,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').then(
 </script>
 
 <!-- Modo Campo V1.1 — painel deslocado para não cobrir zoom -->
+
+<!-- Modo Campo V1.2 — painel minimizado compacto e sem bloquear controles -->
 </body>
 </html>
