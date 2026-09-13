@@ -97,6 +97,7 @@ const PDF_CACHE='modo-campo-pdfs-v7', PDF_SYNC='MODO_CAMPO_PDF_SYNC_V7'; // mant
 const map=L.map('map').setView([-19.45,-44.25],9);
 const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
 const demandLayer=L.layerGroup().addTo(map), opLayer=L.layerGroup().addTo(map), planLayer=L.layerGroup().addTo(map);
+const pafLayer=L.layerGroup().addTo(map), carAreaLayer=L.layerGroup().addTo(map);
 L.control.layers(null,{'Demandas':demandLayer,'Operações':opLayer,'Planejamento':planLayer,'Áreas PAF':pafLayer,'CAR':carAreaLayer},{collapsed:true}).addTo(map);
 let pacote={demandas:[],operacoes:[],planejamento:[],localStorage:{}};
 const NAV_STORE='CAMPO_NAV_V5';let navState={};
