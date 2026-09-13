@@ -1,4 +1,4 @@
-const SHELL='modo-campo-v8-2';
+const SHELL='modo-campo-v8-3';
 const TILE='campo-tiles-v2';
 const SAT='campo-satelite-eox-v8';
 const ASSETS=['./','./index.html','./manifest.webmanifest','https://unpkg.com/leaflet@1.9.4/dist/leaflet.css','https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
