@@ -14,6 +14,8 @@
 /* V4 — operação em campo */
 .filters .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}.checkrow{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;margin:6px 0}.checkrow input{width:auto;margin:0}.planbox{margin-top:9px;padding-top:9px;border-top:1px solid #e2e8f0}.plan-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.cluster{width:36px;height:36px;border-radius:50%;background:#1d4ed8;color:#fff;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;box-shadow:0 2px 8px #0006}.seq{width:22px;height:22px;border-radius:50%;background:#0f172a;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;box-shadow:0 1px 4px #0005}.route-label{background:#fff;border:1px solid #94a3b8;border-radius:6px;padding:2px 5px;font-size:9px;font-weight:800;white-space:nowrap}.miniTitle{font-size:10px;font-weight:800;color:#475569;margin-top:6px}.near{background:#dcfce7!important;color:#166534!important}.panel .muted{font-size:10px;color:#64748b;line-height:1.35}.teamBadge{display:inline-flex;align-items:center;gap:5px;padding:3px 6px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:9px;font-weight:800}
 @media(max-width:700px){.filters .grid2{grid-template-columns:1fr}.plan-actions{grid-template-columns:1fr 1fr}.cluster{width:32px;height:32px;font-size:11px}}
+
+.jornadaNav{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.jornadaNav .btn{padding:8px 6px}.jornadaStatus{margin-top:6px;padding:7px 8px;border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;font-size:10px;line-height:1.35}.seqAtual{outline:4px solid #facc15;box-shadow:0 0 0 6px #fff,0 2px 8px #0008!important;transform:scale(1.18)}.rotaBase{stroke-linecap:round;stroke-linejoin:round}.rotaFeita{stroke-linecap:round;stroke-linejoin:round}.proxBadge{display:inline-block;background:#1d4ed8;color:#fff;border-radius:10px;padding:2px 6px;font-size:9px;font-weight:800}.doneBadge{display:inline-block;background:#166534;color:#fff;border-radius:10px;padding:2px 6px;font-size:9px;font-weight:800}
 </style>
 </head>
 <body>
@@ -54,9 +56,14 @@
     </div>
     <div id="planInfo" class="muted">Nenhum planejamento recebido.</div>
     <div class="plan-actions">
-      <button class="btn sec" id="btnEquipe">🎯 Centralizar equipe</button>
+      <button class="btn sec" id="btnEquipe">🎯 Centralizar jornada</button>
       <button class="btn sec" id="btnProxima">➡️ Próxima demanda</button>
     </div>
+    <div class="jornadaNav">
+      <button class="btn sec" id="btnAnterior">⬅️ Anterior</button>
+      <button class="btn sec" id="btnConcluir">✅ Concluir ponto</button>
+    </div>
+    <div id="jornadaStatus" class="jornadaStatus">Selecione uma equipe e um dia para navegar pela sequência planejada.</div>
   </div>
   <div class="status">Use <b>📲 Enviar ao Modo Campo</b> no mapa online para receber automaticamente demandas, operações e planejamento. Depois prepare a área do mapa para uso sem internet.</div>
   <div id="ultima" class="mini"></div>
@@ -69,6 +76,16 @@ const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ma
 const demandLayer=L.layerGroup().addTo(map), opLayer=L.layerGroup().addTo(map), planLayer=L.layerGroup().addTo(map);
 L.control.layers(null,{'Demandas':demandLayer,'Operações':opLayer,'Planejamento':planLayer},{collapsed:true}).addTo(map);
 let pacote={demandas:[],operacoes:[],planejamento:[],localStorage:{}};
+const NAV_STORE='CAMPO_NAV_V5';let navState={};
+function navId(){const e=document.getElementById('fEquipe')?.value||'',d=document.getElementById('fDia')?.value||'';return e&&d?e+'|'+d:''}
+function loadNav(){try{navState=JSON.parse(localStorage.getItem(NAV_STORE)||'{}')||{}}catch(_){navState={}}}
+function saveNav(){localStorage.setItem(NAV_STORE,JSON.stringify(navState))}
+function jornadaUnica(){const js=jornadasSelecionadas();return js.length===1?js[0]:null}
+function navIndex(){const id=navId();if(!id)return 0;const n=Number(navState[id]?.index||0);const ju=jornadaUnica(),max=Math.max(0,(ju?.j?.pontos||[]).length-1);return Math.max(0,Math.min(max,n))}
+function setNavIndex(n){const id=navId();if(!id)return;navState[id]=navState[id]||{};navState[id].index=Math.max(0,n);saveNav()}
+function concluidoSet(){const id=navId();return new Set((id&&navState[id]?.concluidos)||[])}
+function marcarConcluido(ix){const id=navId();if(!id)return;navState[id]=navState[id]||{};const a=new Set(navState[id].concluidos||[]);a.add(ix);navState[id].concluidos=[...a].sort((a,b)=>a-b);saveNav()}
+
 
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function net(){const e=document.getElementById('net');e.textContent=navigator.onLine?'● Online':'● Offline';e.className='badge '+(navigator.onLine?'ok':'offline')}addEventListener('online',net);addEventListener('offline',net);net();
@@ -101,8 +118,22 @@ let markerByDemandKey=new Map();
 function addIndividual(d,showDue){const c=coord(d);if(!c)return;const p=prazo(d),pdf=d.pdfUrl?'<div class="pdfdot">📄</div>':'',due=showDue?'<div class="due">'+esc(p.mini)+'</div>':'';const mk=L.marker(c,{icon:L.divIcon({className:'',html:'<div class="mk"><div class="pin" style="background:'+p.cor+'"><span>'+esc(tipoSigla(d))+'</span></div>'+due+pdf+'</div>',iconSize:[40,42],iconAnchor:[17,34],popupAnchor:[0,-31]})}).bindPopup(popupDemanda(d),{maxWidth:330}).addTo(demandLayer);markerByDemandKey.set(demandaKey(d),mk)}
 function renderDemandasAgrupadas(vis){markerByDemandKey=new Map();const z=map.getZoom();if(z>=13){vis.forEach(d=>addIndividual(d,true));return}const cell=z<=9?82:z<=11?68:54,groups=new Map();vis.forEach(d=>{const c=coord(d);if(!c)return;const p=map.project(L.latLng(c),z),k=Math.floor(p.x/cell)+'|'+Math.floor(p.y/cell);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(d)});groups.forEach(g=>{if(g.length===1){addIndividual(g[0],false);return}let lat=0,lon=0;g.forEach(d=>{const c=coord(d);lat+=c[0];lon+=c[1]});lat/=g.length;lon/=g.length;L.marker([lat,lon],{icon:L.divIcon({className:'',html:'<div class="cluster">'+g.length+'</div>',iconSize:[40,40],iconAnchor:[20,20]})}).bindTooltip(g.length+' demandas · clique para aproximar').on('click',()=>map.setView([lat,lon],Math.min(15,z+2))).addTo(demandLayer)})}
 function renderPlanejamento(){
-  const js=jornadasSelecionadas();js.forEach(x=>{const p=x.p,j=x.j,cor=corEquipe(p.equipe),pts=(j.pontos||[]).map(coord).filter(Boolean);if(!pts.length)return;if(pts.length>1)L.polyline(pts,{color:cor,weight:4,opacity:.78,dashArray:'8 5'}).bindTooltip('Equipe '+esc(p.equipe)+' · Dia '+esc(j.dia)+' · rota planejada').addTo(planLayer);pts.forEach((c,ix)=>L.marker(c,{icon:L.divIcon({className:'',html:'<div class="seq" style="background:'+cor+'">'+(ix+1)+'</div>',iconSize:[24,24],iconAnchor:[12,12]})}).bindTooltip('<b>Equipe '+esc(p.equipe)+' · Dia '+esc(j.dia)+'</b><br>Ponto '+(ix+1)+'/'+pts.length+(j.pontos[ix]?.codigo?'<br>'+esc(j.pontos[ix].codigo):'')).addTo(planLayer))})
+  const js=jornadasSelecionadas(), atual=navIndex(), concl=concluidoSet();
+  js.forEach(x=>{const p=x.p,j=x.j,cor=corEquipe(p.equipe),raw=(j.pontos||[]),pts=raw.map(coord).filter(Boolean);if(!pts.length)return;
+    let rotaPts=[];const rr=j.rota||j.route||j.geometry||j.coordenadasRota;
+    if(Array.isArray(rr))rotaPts=rr.map(v=>Array.isArray(v)?[Number(v[0]),Number(v[1])]:[Number(v.lat),Number(v.lng??v.lon)]).filter(v=>Number.isFinite(v[0])&&Number.isFinite(v[1]));
+    if(rotaPts.length<2)rotaPts=pts;
+    if(rotaPts.length>1)L.polyline(rotaPts,{color:cor,weight:5,opacity:.72,className:'rotaBase'}).bindTooltip('Equipe '+esc(p.equipe)+' · Dia '+esc(j.dia)+' · rota planejada').addTo(planLayer);
+    pts.forEach((c,ix)=>{const isAtual=(js.length===1&&ix===atual),done=(js.length===1&&concl.has(ix)),bg=done?'#166534':cor,cls=isAtual?' seqAtual':'';const d=raw[ix]||{};
+      L.marker(c,{zIndexOffset:isAtual?1000:500,icon:L.divIcon({className:'',html:'<div class="seq'+cls+'" style="background:'+bg+'">'+(ix+1)+'</div>',iconSize:[24,24],iconAnchor:[12,12]})})
+       .bindPopup('<b>Equipe '+esc(p.equipe)+' · Dia '+esc(j.dia)+'</b><br>Ponto '+(ix+1)+'/'+pts.length+' '+(done?'<span class="doneBadge">CONCLUÍDO</span>':isAtual?'<span class="proxBadge">PRÓXIMO</span>':'')+'<hr style="border:0;border-top:1px solid #ddd">'+popupDemanda(d))
+       .addTo(planLayer);
+    });
+  });
+  atualizarJornadaStatus();
 }
+function atualizarJornadaStatus(){const el=document.getElementById('jornadaStatus');if(!el)return;const ju=jornadaUnica();if(!ju){el.innerHTML='Selecione <b>uma equipe</b> e <b>um dia</b> para navegar pela sequência planejada.';return}const pts=ju.j.pontos||[];if(!pts.length){el.textContent='Esta jornada não possui demandas.';return}const ix=navIndex(),d=pts[ix],done=concluidoSet();el.innerHTML='<b>Equipe '+esc(ju.p.equipe)+' · Dia '+esc(ju.j.dia)+'</b><br>Próximo: <span class="proxBadge">'+(ix+1)+'/'+pts.length+'</span> <b>'+esc(key(d))+'</b> · '+done.size+' concluído(s).'}
+function abrirPontoPlanejado(ix){const ju=jornadaUnica();if(!ju)return alert('Selecione uma equipe e um dia.');const pts=ju.j.pontos||[];if(!pts.length)return alert('A jornada selecionada não possui pontos.');ix=Math.max(0,Math.min(pts.length-1,ix));setNavIndex(ix);const d=pts[ix],c=coord(d);render();if(c){map.setView(c,15);setTimeout(()=>{planLayer.eachLayer(l=>{try{const ll=l.getLatLng?.();if(ll&&Math.abs(ll.lat-c[0])<1e-7&&Math.abs(ll.lng-c[1])<1e-7&&l.openPopup)l.openPopup()}catch(_){}})},80)}atualizarJornadaStatus()}
 function render(){
   demandLayer.clearLayers();opLayer.clearLayers();planLayer.clearLayers();
   const vis=(pacote.demandas||[]).filter(filtroDemanda);renderDemandasAgrupadas(vis);
@@ -144,8 +175,10 @@ document.getElementById('limparFiltro').onclick=()=>{['fBusca'].forEach(id=>{con
 document.getElementById('togglePanel').onclick=()=>{const p=document.getElementById('panel');p.classList.toggle('min');document.getElementById('togglePanel').textContent=p.classList.contains('min')?'+':'−'};
 map.on('zoomend',render);
 document.getElementById('btnEquipe').onclick=()=>{const js=jornadasSelecionadas(),pts=[];js.forEach(x=>(x.j.pontos||[]).forEach(d=>{const c=coord(d);if(c)pts.push(c)}));if(!pts.length)return alert('Selecione uma equipe/dia que possua pontos planejados.');map.fitBounds(L.latLngBounds(pts),{padding:[40,40],maxZoom:15})};
-document.getElementById('btnProxima').onclick=()=>{if(!navigator.geolocation)return alert('GPS não disponível.');navigator.geolocation.getCurrentPosition(pos=>{const origem=L.latLng(pos.coords.latitude,pos.coords.longitude),vis=(pacote.demandas||[]).filter(filtroDemanda).map(d=>({d,c:coord(d)})).filter(x=>x.c);if(!vis.length)return alert('Nenhuma demanda disponível com os filtros atuais.');vis.sort((a,b)=>map.distance(origem,L.latLng(a.c))-map.distance(origem,L.latLng(b.c)));const alvo=vis[0],dist=Math.round(map.distance(origem,L.latLng(alvo.c)));map.setView(alvo.c,15);setTimeout(()=>{render();const mk=markerByDemandKey.get(demandaKey(alvo.d));if(mk)mk.openPopup()},120);const s=document.getElementById('sync');s.className='sync near';s.innerHTML='➡️ Próxima demanda: <b>'+esc(key(alvo.d))+'</b> · aproximadamente '+(dist>=1000?(dist/1000).toFixed(1)+' km':dist+' m')+'.'},e=>alert('Localização indisponível: '+e.message),{enableHighAccuracy:true,timeout:15000})};
-popularFiltrosV4();
+document.getElementById('btnProxima').onclick=()=>{const ju=jornadaUnica();if(!ju)return alert('Selecione uma equipe e um dia para seguir a sequência planejada.');const pts=ju.j.pontos||[];if(!pts.length)return alert('A jornada selecionada não possui pontos.');let ix=navIndex();const concl=concluidoSet();while(ix<pts.length-1&&concl.has(ix))ix++;abrirPontoPlanejado(ix)};
+document.getElementById('btnAnterior').onclick=()=>abrirPontoPlanejado(navIndex()-1);
+document.getElementById('btnConcluir').onclick=()=>{const ju=jornadaUnica();if(!ju)return alert('Selecione uma equipe e um dia.');const pts=ju.j.pontos||[];if(!pts.length)return;const ix=navIndex();marcarConcluido(ix);if(ix<pts.length-1)setNavIndex(ix+1);render();abrirPontoPlanejado(navIndex())};
+loadNav();popularFiltrosV4();
 
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').then(r=>{try{r.update()}catch(_){}});
 receberAutomatico();

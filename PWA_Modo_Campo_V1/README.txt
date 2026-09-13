@@ -1,5 +1,4 @@
-MODO CAMPO PWA — V4
+MODO CAMPO PWA — V5 JORNADA OPERACIONAL
 
-Melhorias: agrupamento de pontos, filtros por tipo/município, planejamento por equipe/dia, rota planejada offline, somente planejamento, centralizar equipe e próxima demanda.
-
+Atualização: sequência por equipe/dia, pontos numerados, próximo/anterior, concluir ponto, destaque do próximo e rota da jornada.
 Substitua index.html, sw.js e manifest.webmanifest na pasta PWA_Modo_Campo_V1 do GitHub.
