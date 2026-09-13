@@ -1,9 +1,15 @@
-MODO CAMPO PWA — V7 PDFs OFFLINE
+MODO CAMPO PWA — V7.1 PDFs SELETIVOS
+
+Atualização sobre a V7 validada.
 
 Novidades:
-- Download prévio dos PDFs associados às demandas.
-- PDFs armazenados no aparelho e abertos mesmo sem internet.
-- Contador de PDFs offline e uso aproximado de armazenamento.
-- Limpeza dos PDFs sem apagar demandas, planejamento ou mapas.
+- PDF individual: abra uma demanda e use “Salvar offline”.
+- PDFs do planejamento: baixa apenas documentos dos pontos planejados.
+- PDFs das operações: usa os polígonos e raios recebidos do mapa online.
+- No popup de cada operação: “PDFs desta área”.
+- “Todos os PDFs” permanece como opção secundária.
+- PDFs já salvos não são baixados novamente.
 
-Requer Code.gs V7.2.0 no Apps Script para fornecer os PDFs ao PWA de forma segura usando o mesmo código/chave do pacote.
+Substitua no GitHub index.html, sw.js e manifest.webmanifest.
+A pasta icons pode ser mantida.
+O backend Code V7.2.0 continua o mesmo.
