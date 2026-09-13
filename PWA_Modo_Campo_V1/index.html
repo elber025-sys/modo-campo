@@ -15,7 +15,7 @@
 .filters .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}.checkrow{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;margin:6px 0}.checkrow input{width:auto;margin:0}.planbox{margin-top:9px;padding-top:9px;border-top:1px solid #e2e8f0}.plan-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.cluster{width:36px;height:36px;border-radius:50%;background:#1d4ed8;color:#fff;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;box-shadow:0 2px 8px #0006}.seq{width:22px;height:22px;border-radius:50%;background:#0f172a;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;box-shadow:0 1px 4px #0005}.route-label{background:#fff;border:1px solid #94a3b8;border-radius:6px;padding:2px 5px;font-size:9px;font-weight:800;white-space:nowrap}.miniTitle{font-size:10px;font-weight:800;color:#475569;margin-top:6px}.near{background:#dcfce7!important;color:#166534!important}.panel .muted{font-size:10px;color:#64748b;line-height:1.35}.teamBadge{display:inline-flex;align-items:center;gap:5px;padding:3px 6px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:9px;font-weight:800}
 @media(max-width:700px){.filters .grid2{grid-template-columns:1fr}.plan-actions{grid-template-columns:1fr 1fr}.cluster{width:32px;height:32px;font-size:11px}}
 
-.jornadaNav{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.jornadaNav .btn{padding:8px 6px}.jornadaStatus{margin-top:6px;padding:7px 8px;border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;font-size:10px;line-height:1.35}.seqAtual{outline:4px solid #facc15;box-shadow:0 0 0 6px #fff,0 2px 8px #0008!important;transform:scale(1.18)}.rotaBase{stroke-linecap:round;stroke-linejoin:round}.rotaFeita{stroke-linecap:round;stroke-linejoin:round}.proxBadge{display:inline-block;background:#1d4ed8;color:#fff;border-radius:10px;padding:2px 6px;font-size:9px;font-weight:800}.doneBadge{display:inline-block;background:#166534;color:#fff;border-radius:10px;padding:2px 6px;font-size:9px;font-weight:800}
+.jornadaNav{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.jornadaNav .btn{padding:8px 6px}.jornadaStatus{margin-top:6px;padding:7px 8px;border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;font-size:10px;line-height:1.35}.seqAtual{outline:4px solid #facc15;box-shadow:0 0 0 6px #fff,0 2px 8px #0008!important;transform:scale(1.18)}.rotaBase{stroke-linecap:round;stroke-linejoin:round}.rotaFeita{stroke-linecap:round;stroke-linejoin:round}.proxBadge{display:inline-block;background:#1d4ed8;color:#fff;border-radius:10px;padding:2px 6px;font-size:9px;font-weight:800}.doneBadge{display:inline-block;background:#166534;color:#fff;border-radius:10px;padding:2px 6px;font-size:9px;font-weight:800}.seqDone{background:#166534!important;opacity:.8}.seqPending{background:#2563eb!important}.startEnd{font-weight:900;background:#fff;border:2px solid #111;border-radius:12px;padding:2px 6px;font-size:10px;box-shadow:0 1px 4px #0005}.resetBtn{grid-column:1/-1;background:#fff7ed!important;border-color:#fdba74!important;color:#9a3412!important}
 </style>
 </head>
 <body>
@@ -62,6 +62,7 @@
     <div class="jornadaNav">
       <button class="btn sec" id="btnAnterior">⬅️ Anterior</button>
       <button class="btn sec" id="btnConcluir">✅ Concluir ponto</button>
+      <button class="btn sec resetBtn" id="btnReiniciar">↻ Reiniciar jornada</button>
     </div>
     <div id="jornadaStatus" class="jornadaStatus">Selecione uma equipe e um dia para navegar pela sequência planejada.</div>
   </div>
@@ -85,6 +86,7 @@ function navIndex(){const id=navId();if(!id)return 0;const n=Number(navState[id]
 function setNavIndex(n){const id=navId();if(!id)return;navState[id]=navState[id]||{};navState[id].index=Math.max(0,n);saveNav()}
 function concluidoSet(){const id=navId();return new Set((id&&navState[id]?.concluidos)||[])}
 function marcarConcluido(ix){const id=navId();if(!id)return;navState[id]=navState[id]||{};const a=new Set(navState[id].concluidos||[]);a.add(ix);navState[id].concluidos=[...a].sort((a,b)=>a-b);saveNav()}
+function reiniciarJornada(){const id=navId();if(!id)return alert('Selecione uma equipe e um dia.');if(!confirm('Reiniciar o progresso desta jornada? Os pontos concluídos desta equipe/dia serão zerados.'))return;navState[id]={index:0,concluidos:[]};saveNav();render();abrirPontoPlanejado(0)}
 
 
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -124,19 +126,20 @@ function renderPlanejamento(){
     if(Array.isArray(rr))rotaPts=rr.map(v=>Array.isArray(v)?[Number(v[0]),Number(v[1])]:[Number(v.lat),Number(v.lng??v.lon)]).filter(v=>Number.isFinite(v[0])&&Number.isFinite(v[1]));
     if(rotaPts.length<2)rotaPts=pts;
     if(rotaPts.length>1)L.polyline(rotaPts,{color:cor,weight:5,opacity:.72,className:'rotaBase'}).bindTooltip('Equipe '+esc(p.equipe)+' · Dia '+esc(j.dia)+' · rota planejada').addTo(planLayer);
-    pts.forEach((c,ix)=>{const isAtual=(js.length===1&&ix===atual),done=(js.length===1&&concl.has(ix)),bg=done?'#166534':cor,cls=isAtual?' seqAtual':'';const d=raw[ix]||{};
-      L.marker(c,{zIndexOffset:isAtual?1000:500,icon:L.divIcon({className:'',html:'<div class="seq'+cls+'" style="background:'+bg+'">'+(ix+1)+'</div>',iconSize:[24,24],iconAnchor:[12,12]})})
+    if(js.length===1&&pts.length){L.marker(pts[0],{interactive:false,zIndexOffset:450,icon:L.divIcon({className:'',html:'<div class="startEnd">INÍCIO</div>',iconSize:[48,20],iconAnchor:[24,30]})}).addTo(planLayer);if(pts.length>1)L.marker(pts[pts.length-1],{interactive:false,zIndexOffset:450,icon:L.divIcon({className:'',html:'<div class="startEnd">FIM</div>',iconSize:[36,20],iconAnchor:[18,-8]})}).addTo(planLayer)}
+    pts.forEach((c,ix)=>{const isAtual=(js.length===1&&ix===atual),done=(js.length===1&&concl.has(ix)),bg=done?'#166534':cor,cls=(isAtual?' seqAtual':'')+(done?' seqDone':' seqPending');const d=raw[ix]||{};
+      L.marker(c,{zIndexOffset:isAtual?1000:500,icon:L.divIcon({className:'',html:'<div class="seq'+cls+'" style="background:'+bg+'">'+(done?'✓':(ix+1))+'</div>',iconSize:[24,24],iconAnchor:[12,12]})})
        .bindPopup('<b>Equipe '+esc(p.equipe)+' · Dia '+esc(j.dia)+'</b><br>Ponto '+(ix+1)+'/'+pts.length+' '+(done?'<span class="doneBadge">CONCLUÍDO</span>':isAtual?'<span class="proxBadge">PRÓXIMO</span>':'')+'<hr style="border:0;border-top:1px solid #ddd">'+popupDemanda(d))
        .addTo(planLayer);
     });
   });
   atualizarJornadaStatus();
 }
-function atualizarJornadaStatus(){const el=document.getElementById('jornadaStatus');if(!el)return;const ju=jornadaUnica();if(!ju){el.innerHTML='Selecione <b>uma equipe</b> e <b>um dia</b> para navegar pela sequência planejada.';return}const pts=ju.j.pontos||[];if(!pts.length){el.textContent='Esta jornada não possui demandas.';return}const ix=navIndex(),d=pts[ix],done=concluidoSet();el.innerHTML='<b>Equipe '+esc(ju.p.equipe)+' · Dia '+esc(ju.j.dia)+'</b><br>Próximo: <span class="proxBadge">'+(ix+1)+'/'+pts.length+'</span> <b>'+esc(key(d))+'</b> · '+done.size+' concluído(s).'}
+function atualizarJornadaStatus(){const el=document.getElementById('jornadaStatus');if(!el)return;const ju=jornadaUnica();if(!ju){el.innerHTML='Selecione <b>uma equipe</b> e <b>um dia</b> para navegar pela sequência planejada.';return}const pts=ju.j.pontos||[];if(!pts.length){el.textContent='Esta jornada não possui demandas.';return}const ix=navIndex(),d=pts[ix],done=concluidoSet();if(done.size>=pts.length){el.innerHTML='<b>Equipe '+esc(ju.p.equipe)+' · Dia '+esc(ju.j.dia)+'</b><br><span class="doneBadge">JORNADA CONCLUÍDA</span> · '+pts.length+' ponto(s).';return}el.innerHTML='<b>Equipe '+esc(ju.p.equipe)+' · Dia '+esc(ju.j.dia)+'</b><br>Próximo: <span class="proxBadge">'+(ix+1)+'/'+pts.length+'</span> <b>'+esc(key(d))+'</b> · '+done.size+' concluído(s).'}
 function abrirPontoPlanejado(ix){const ju=jornadaUnica();if(!ju)return alert('Selecione uma equipe e um dia.');const pts=ju.j.pontos||[];if(!pts.length)return alert('A jornada selecionada não possui pontos.');ix=Math.max(0,Math.min(pts.length-1,ix));setNavIndex(ix);const d=pts[ix],c=coord(d);render();if(c){map.setView(c,15);setTimeout(()=>{planLayer.eachLayer(l=>{try{const ll=l.getLatLng?.();if(ll&&Math.abs(ll.lat-c[0])<1e-7&&Math.abs(ll.lng-c[1])<1e-7&&l.openPopup)l.openPopup()}catch(_){}})},80)}atualizarJornadaStatus()}
 function render(){
   demandLayer.clearLayers();opLayer.clearLayers();planLayer.clearLayers();
-  const vis=(pacote.demandas||[]).filter(filtroDemanda);renderDemandasAgrupadas(vis);
+  let vis=(pacote.demandas||[]).filter(filtroDemanda);const juAtiva=jornadaUnica();if(juAtiva){const ks=new Set((juAtiva.j.pontos||[]).map(demandaKey));vis=vis.filter(d=>!ks.has(demandaKey(d)))}renderDemandasAgrupadas(vis);
   const eq=document.getElementById('fEquipe')?.value||'';
   (pacote.operacoes||[]).forEach((op,i)=>{if(eq&&String(i+1)!==eq&&String(op.equipe||'')!==eq)return;const cor=corEquipe(i+1);let l=null;if(Array.isArray(op.poligono)&&op.poligono.length>=3){const ps=op.poligono.map(p=>[Number(p.lat),Number(p.lng)]).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));if(ps.length>=3)l=L.polygon(ps,{color:cor,weight:3,fillColor:cor,fillOpacity:.08})}else if(op.centro&&Number.isFinite(Number(op.centro.lat))&&Number.isFinite(Number(op.centro.lng))){l=L.circle([Number(op.centro.lat),Number(op.centro.lng)],{radius:Number(op.raio)||150,color:cor,weight:3,fillOpacity:.06})}if(l)l.bindPopup('<b>'+esc(op.nome||('Operação '+(i+1)))+'</b><br>Status: '+esc(op.status||'PLANEJADA')).addTo(opLayer)});
   renderPlanejamento();
@@ -177,6 +180,7 @@ map.on('zoomend',render);
 document.getElementById('btnEquipe').onclick=()=>{const js=jornadasSelecionadas(),pts=[];js.forEach(x=>(x.j.pontos||[]).forEach(d=>{const c=coord(d);if(c)pts.push(c)}));if(!pts.length)return alert('Selecione uma equipe/dia que possua pontos planejados.');map.fitBounds(L.latLngBounds(pts),{padding:[40,40],maxZoom:15})};
 document.getElementById('btnProxima').onclick=()=>{const ju=jornadaUnica();if(!ju)return alert('Selecione uma equipe e um dia para seguir a sequência planejada.');const pts=ju.j.pontos||[];if(!pts.length)return alert('A jornada selecionada não possui pontos.');let ix=navIndex();const concl=concluidoSet();while(ix<pts.length-1&&concl.has(ix))ix++;abrirPontoPlanejado(ix)};
 document.getElementById('btnAnterior').onclick=()=>abrirPontoPlanejado(navIndex()-1);
+document.getElementById('btnReiniciar').onclick=reiniciarJornada;
 document.getElementById('btnConcluir').onclick=()=>{const ju=jornadaUnica();if(!ju)return alert('Selecione uma equipe e um dia.');const pts=ju.j.pontos||[];if(!pts.length)return;const ix=navIndex();marcarConcluido(ix);if(ix<pts.length-1)setNavIndex(ix+1);render();abrirPontoPlanejado(navIndex())};
 loadNav();popularFiltrosV4();
 
