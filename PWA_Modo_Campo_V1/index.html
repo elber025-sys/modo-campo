@@ -17,6 +17,41 @@
 
 .jornadaNav{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.jornadaNav .btn{padding:8px 6px}.jornadaStatus{margin-top:6px;padding:7px 8px;border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;font-size:10px;line-height:1.35}.seqAtual{outline:4px solid #facc15;box-shadow:0 0 0 6px #fff,0 2px 8px #0008!important;transform:scale(1.18)}.rotaBase{stroke-linecap:round;stroke-linejoin:round}.rotaFeita{stroke-linecap:round;stroke-linejoin:round}.proxBadge{display:inline-block;background:#1d4ed8;color:#fff;border-radius:10px;padding:2px 6px;font-size:9px;font-weight:800}.doneBadge{display:inline-block;background:#166534;color:#fff;border-radius:10px;padding:2px 6px;font-size:9px;font-weight:800}.seqDone{background:#166534!important;opacity:.8}.seqPending{background:#2563eb!important}.startEnd{font-weight:900;background:#fff;border:2px solid #111;border-radius:12px;padding:2px 6px;font-size:10px;box-shadow:0 1px 4px #0005}.resetBtn{grid-column:1/-1;background:#fff7ed!important;border-color:#fdba74!important;color:#9a3412!important}
 </style>
+
+<style id="v101-panel-zoom-fix">
+/* V1.1 — evita sobreposição do painel com o zoom do Leaflet */
+.panel{
+  left:58px !important;
+  top:100px !important;
+  max-width:calc(100vw - 76px) !important;
+}
+.panel.collapsed{
+  left:58px !important;
+}
+.togglePanel{
+  position:relative !important;
+  z-index:1001 !important;
+}
+.leaflet-top.leaflet-left{
+  z-index:1200 !important;
+}
+.leaflet-control-zoom{
+  position:relative !important;
+  z-index:1201 !important;
+}
+@media(max-width:700px){
+  .panel{
+    left:54px !important;
+    right:8px !important;
+    max-width:none !important;
+  }
+  .panel.collapsed{
+    left:54px !important;
+    right:auto !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <header><b>📲 Demandas Operacionais — Modo Campo</b><span id="net" class="badge">...</span></header>
@@ -253,5 +288,7 @@ loadNav();popularFiltrosV4();atualizarPdfStatus();
 
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').then(r=>{try{r.update()}catch(_){}});
 </script>
+
+<!-- Modo Campo V1.1 — painel deslocado para não cobrir zoom -->
 </body>
 </html>
