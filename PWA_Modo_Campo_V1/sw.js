@@ -1,4 +1,4 @@
-const SHELL='modo-campo-v4';
+const SHELL='modo-campo-v7';
 const TILE='campo-tiles-v2';
 const ASSETS=['./','./index.html','./manifest.webmanifest','https://unpkg.com/leaflet@1.9.4/dist/leaflet.css','https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(SHELL).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
