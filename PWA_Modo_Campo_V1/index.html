@@ -116,6 +116,18 @@
 .leaflet-control-layers{pointer-events:auto!important;z-index:1200!important}
 .leaflet-control-layers-expanded{max-height:70vh;overflow:auto}
 </style>
+
+<style id="pdfViewerOfflineStyle">
+#pdfViewerBg{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:99999;display:none;align-items:stretch;justify-content:center;padding:12px}
+#pdfViewerBox{width:min(1100px,100%);height:calc(100vh - 24px);background:#fff;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 60px rgba(0,0,0,.35)}
+#pdfViewerHead{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #e2e8f0;background:#f8fafc}
+#pdfViewerTitle{font-weight:800;color:#0f172a;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pdfViewerBody{flex:1;min-height:0}
+#pdfViewerFrame{border:0;width:100%;height:100%;background:#e5e7eb}
+#pdfViewerHead button,#pdfViewerHead a{border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:7px 10px;font-weight:700;color:#334155;text-decoration:none;cursor:pointer}
+@media(max-width:700px){#pdfViewerBg{padding:0}#pdfViewerBox{height:100vh;border-radius:0}#pdfViewerHead{padding:7px}#pdfViewerHead button,#pdfViewerHead a{padding:7px 8px;font-size:12px}}
+</style>
+
 </head>
 <body>
 <header><b>📲 Demandas Operacionais — Modo Campo</b><span id="net" class="badge">...</span></header>
@@ -411,8 +423,30 @@ function syncPdfMeta(){try{return JSON.parse(localStorage.getItem(PDF_SYNC)||'nu
 function guardarSyncPdf(meta){try{localStorage.setItem(PDF_SYNC,JSON.stringify(meta||{}))}catch(_){}}
 function b64Blob(b64,mime){const bin=atob(b64),chunk=32768,parts=[];for(let i=0;i<bin.length;i+=chunk){const sub=bin.slice(i,i+chunk),a=new Uint8Array(sub.length);for(let j=0;j<sub.length;j++)a[j]=sub.charCodeAt(j);parts.push(a)}return new Blob(parts,{type:mime||'application/pdf'})}
 function solicitarPdfBackend(index){return new Promise((resolve,reject)=>{const m=syncPdfMeta();if(!m||!m.api||!m.codigo||!m.chave)return reject(new Error('Reenvie o pacote pelo mapa online para autorizar o download dos PDFs.'));if(!navigator.onLine)return reject(new Error('Sem internet para baixar um novo PDF.'));const cb='modoCampoPdfCb_'+Date.now()+'_'+Math.floor(Math.random()*100000);let timer=setTimeout(()=>{try{delete window[cb]}catch(_){};reject(new Error('Tempo esgotado ao baixar o PDF.'))},90000);window[cb]=r=>{clearTimeout(timer);try{delete window[cb]}catch(_){};if(!r||!r.ok)return reject(new Error((r&&r.mensagem)||'PDF indisponível.'));resolve(r)};const sep=m.api.includes('?')?'&':'?';const sc=document.createElement('script');sc.src=m.api+sep+'api=modoCampoPdf&codigo='+encodeURIComponent(m.codigo)+'&chave='+encodeURIComponent(m.chave)+'&indice='+encodeURIComponent(index)+'&callback='+encodeURIComponent(cb)+'&_='+Date.now();sc.async=true;sc.onerror=()=>{clearTimeout(timer);try{delete window[cb]}catch(_){};reject(new Error('Falha de conexão ao baixar o PDF.'))};document.head.appendChild(sc)})}
-async function baixarPdfIndice(index,abrirDepois){const d=(pacote.demandas||[])[index];if(!d||!d.pdfUrl)throw new Error('Esta demanda não possui PDF.');const c=await caches.open(PDF_CACHE),u=pdfCacheUrl(d);let hit=await c.match(u);if(!hit){const r=await solicitarPdfBackend(index);const blob=b64Blob(r.base64,r.mime);await c.put(u,new Response(blob,{headers:{'Content-Type':r.mime||'application/pdf','X-Pdf-Name':encodeURIComponent(r.nome||('demanda_'+key(d)+'.pdf'))}}));hit=await c.match(u)}await atualizarPdfStatus();if(abrirDepois&&hit){const blob=await hit.blob(),url=URL.createObjectURL(blob);window.open(url,'_blank');setTimeout(()=>URL.revokeObjectURL(url),120000)}return true}
-window.abrirPdfDemanda=async function(k){const idx=(pacote.demandas||[]).findIndex(d=>demandaKey(d)===k);if(idx<0)return alert('Demanda não encontrada no pacote offline.');const d=pacote.demandas[idx];try{const c=await caches.open(PDF_CACHE),hit=await c.match(pdfCacheUrl(d));if(hit){const blob=await hit.blob(),url=URL.createObjectURL(blob);window.open(url,'_blank');setTimeout(()=>URL.revokeObjectURL(url),120000);return}if(!navigator.onLine)return alert('Este PDF ainda não foi preparado para uso offline. Conecte-se à internet e toque em “Preparar PDFs”.');await baixarPdfIndice(idx,true)}catch(e){alert('Não foi possível abrir o PDF: '+e.message)}};
+let pdfViewerBlobUrl=null;
+function nomePdfResposta(hit,d){try{const h=hit&&hit.headers&&hit.headers.get('X-Pdf-Name');if(h)return decodeURIComponent(h)}catch(_){}return 'demanda_'+key(d)+'.pdf'}
+async function abrirRespostaPdfOffline(hit,d){
+  if(!hit)throw new Error('PDF offline não encontrado.');
+  const blob=await hit.blob();
+  if(!blob||blob.size===0)throw new Error('O PDF salvo está vazio.');
+  if(pdfViewerBlobUrl){try{URL.revokeObjectURL(pdfViewerBlobUrl)}catch(_){}}
+  pdfViewerBlobUrl=URL.createObjectURL(blob);
+  const nome=nomePdfResposta(hit,d);
+  const bg=document.getElementById('pdfViewerBg'),frame=document.getElementById('pdfViewerFrame'),titulo=document.getElementById('pdfViewerTitle'),baixar=document.getElementById('pdfViewerDownload');
+  if(titulo)titulo.textContent=nome;
+  if(baixar){baixar.href=pdfViewerBlobUrl;baixar.download=nome}
+  if(frame)frame.src=pdfViewerBlobUrl+'#toolbar=1&navpanes=0&view=FitH';
+  if(bg)bg.style.display='flex';
+}
+function fecharPdfViewer(){
+  const bg=document.getElementById('pdfViewerBg'),frame=document.getElementById('pdfViewerFrame');
+  if(bg)bg.style.display='none';
+  if(frame)frame.src='about:blank';
+  if(pdfViewerBlobUrl){const u=pdfViewerBlobUrl;pdfViewerBlobUrl=null;setTimeout(()=>{try{URL.revokeObjectURL(u)}catch(_){}},500)}
+}
+function fecharPdfViewerFundo(e){if(e&&e.target&&e.target.id==='pdfViewerBg')fecharPdfViewer()}
+async function baixarPdfIndice(index,abrirDepois){const d=(pacote.demandas||[])[index];if(!d||!d.pdfUrl)throw new Error('Esta demanda não possui PDF.');const c=await caches.open(PDF_CACHE),u=pdfCacheUrl(d);let hit=await c.match(u);if(!hit){const r=await solicitarPdfBackend(index);const blob=b64Blob(r.base64,r.mime);await c.put(u,new Response(blob,{headers:{'Content-Type':r.mime||'application/pdf','X-Pdf-Name':encodeURIComponent(r.nome||('demanda_'+key(d)+'.pdf'))}}));hit=await c.match(u)}await atualizarPdfStatus();if(abrirDepois&&hit)await abrirRespostaPdfOffline(hit,d);return true}
+window.abrirPdfDemanda=async function(k){const idx=(pacote.demandas||[]).findIndex(d=>demandaKey(d)===k);if(idx<0)return alert('Demanda não encontrada no pacote offline.');const d=pacote.demandas[idx];try{const c=await caches.open(PDF_CACHE),hit=await c.match(pdfCacheUrl(d));if(hit){await abrirRespostaPdfOffline(hit,d);return}if(!navigator.onLine)return alert('Este PDF ainda não foi preparado para uso offline. Conecte-se à internet e toque em “Preparar PDFs”.');await baixarPdfIndice(idx,true)}catch(e){alert('Não foi possível abrir o PDF: '+e.message)}};
 window.salvarPdfDemanda=async function(k){const idx=(pacote.demandas||[]).findIndex(d=>demandaKey(d)===k);if(idx<0)return alert('Demanda não encontrada no pacote.');const d=pacote.demandas[idx];if(!d.pdfUrl)return alert('Esta demanda não possui PDF.');try{if(await pdfEstaOffline(d))return alert('Este PDF já está salvo offline.');if(!navigator.onLine)return alert('Conecte-se à internet para salvar este PDF.');await baixarPdfIndice(idx,false);alert('PDF da demanda '+key(d)+' salvo para uso offline.')}catch(e){alert('Não foi possível salvar o PDF: '+e.message)}};
 function indicesPdfsDasDemandas(ds){const keys=new Set((ds||[]).map(demandaKey));return pdfDemandas().filter(x=>keys.has(demandaKey(x.d)))}
 async function prepararListaPdfs(arr,titulo){if(!arr.length)return alert('Nenhum PDF encontrado em '+titulo+'.');const meta=syncPdfMeta();if(!meta||!meta.api||!meta.codigo||!meta.chave)return alert('Reenvie o pacote pelo mapa online para autorizar o download dos PDFs.');if(!navigator.onLine)return alert('Conecte-se à internet para preparar os PDFs.');const el=document.getElementById('pdfStatus'),c=await caches.open(PDF_CACHE);let ok=0,pulados=0,falhas=[];for(let pos=0;pos<arr.length;pos++){const x=arr[pos],u=pdfCacheUrl(x.d);if(await c.match(u)){pulados++;ok++;continue}if(el)el.innerHTML=esc(titulo)+' · baixando <b>'+(pos+1)+'/'+arr.length+'</b> · '+esc(key(x.d));try{await baixarPdfIndice(x.i,false);ok++}catch(e){falhas.push(key(x.d)+': '+e.message)}}await atualizarPdfStatus();let msg=titulo+': '+ok+' de '+arr.length+' PDF(s) disponíveis offline.';if(pulados)msg+=' '+pulados+' já estavam salvos.';if(falhas.length)msg+=' '+falhas.length+' falha(s).';alert(msg+(falhas.length?'\n\n'+falhas.slice(0,8).join('\n'):''))}
@@ -553,5 +587,19 @@ if('serviceWorker' in navigator){
 <!-- Modo Campo V1.7 — interface CAR removida; PAF continua apenas como camada recebida -->
 
 <!-- Modo Campo V1.9 — shell offline completo + Leaflet em cache + Satélite Esri offline -->
+
+<div id="pdfViewerBg" onclick="fecharPdfViewerFundo(event)">
+  <div id="pdfViewerBox" role="dialog" aria-modal="true" aria-label="Visualizador de PDF offline">
+    <div id="pdfViewerHead">
+      <div id="pdfViewerTitle">PDF</div>
+      <a id="pdfViewerDownload" href="#" download>⬇️ Baixar</a>
+      <button type="button" onclick="fecharPdfViewer()">✕ Fechar</button>
+    </div>
+    <div id="pdfViewerBody"><iframe id="pdfViewerFrame" title="PDF offline"></iframe></div>
+  </div>
+</div>
+
+
+<!-- Modo Campo V1.10 — visualizador interno para PDFs offline -->
 </body>
 </html>
