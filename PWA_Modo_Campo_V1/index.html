@@ -244,6 +244,7 @@ const sateliteHibridoCampoV15=L.tileLayer(
   {maxZoom:22,subdomains:['mt0','mt1','mt2','mt3'],attribution:'Google'}
 );
 try{
+  controleCamadasCampo.addBaseLayer(tiles,'🗺️ OpenStreetMap');
   controleCamadasCampo.addBaseLayer(sateliteCampoV15,'🛰️ Satélite');
   controleCamadasCampo.addBaseLayer(sateliteHibridoCampoV15,'🛰️ Satélite Híbrido');
 }catch(e){
@@ -525,7 +526,18 @@ document.getElementById('btnReiniciar').onclick=reiniciarJornada;
 document.getElementById('btnConcluir').onclick=()=>{const ju=jornadaUnica();if(!ju)return alert('Selecione uma equipe e um dia.');const pts=ju.j.pontos||[];if(!pts.length)return;const ix=navIndex();marcarConcluido(ix);if(ix<pts.length-1)setNavIndex(ix+1);render();abrirPontoPlanejado(navIndex())};
 loadNav();popularFiltrosV4();atualizarPdfStatus();
 
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').then(r=>{try{r.update()}catch(_){}});
+if('serviceWorker' in navigator){
+  window.addEventListener('load', async ()=>{
+    try{
+      const reg=await navigator.serviceWorker.register('./sw.js?v=1.9.0',{scope:'./'});
+      try{await reg.update()}catch(_){}
+      try{await navigator.serviceWorker.ready}catch(_){}
+      console.log('Modo Campo offline pronto — SW v1.9');
+    }catch(e){
+      console.warn('Service Worker indisponível:',e);
+    }
+  });
+}
 </script>
 
 <!-- Modo Campo V1.1 — painel deslocado para não cobrir zoom -->
@@ -540,6 +552,6 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').then(
 
 <!-- Modo Campo V1.7 — interface CAR removida; PAF continua apenas como camada recebida -->
 
-<!-- Modo Campo V1.8 — Satélite Esri incorporado ao preparo e uso offline -->
+<!-- Modo Campo V1.9 — shell offline completo + Leaflet em cache + Satélite Esri offline -->
 </body>
 </html>
