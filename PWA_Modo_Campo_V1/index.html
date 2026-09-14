@@ -144,6 +144,11 @@
   <div class="row" style="margin-top:8px">
     <button class="btn pri" id="importar">📂 Importar backup</button>
     <button class="btn sec" id="gps">📍 Minha localização</button>
+    <select id="tileProvider" class="btn sec" title="Escolha qual mapa preparar para uso offline" style="max-width:180px">
+      <option value="osm">🗺️ OpenStreetMap</option>
+      <option value="sat">🛰️ Satélite</option>
+      <option value="both">🗺️🛰️ Ambos</option>
+    </select>
     <button class="btn sec" id="tiles">⬇️ Preparar mapa visível</button>
   </div>
   
@@ -182,20 +187,58 @@
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const STORE='CAMPO_PACOTE_V2', TILE_CACHE='campo-tiles-v2';
+const STORE='CAMPO_PACOTE_V2', TILE_CACHE='campo-tiles-v3';
 let somenteCAR=false;
 const PDF_CACHE='modo-campo-pdfs-v7', PDF_SYNC='MODO_CAMPO_PDF_SYNC_V7'; // mantém a mesma chave para preservar os dados da V3
+
+// V1.8 — camada de tiles que consulta primeiro o Cache Storage.
+// Assim o Satélite preparado continua visível mesmo quando não há internet,
+// sem depender do navegador conseguir buscar o tile na rede.
+const CampoCachedTileLayer=L.TileLayer.extend({
+  createTile:function(coords,done){
+    const tile=document.createElement('img');
+    tile.alt=''; tile.setAttribute('role','presentation');
+    const url=this.getTileUrl(coords);
+    let objectUrl='';
+    const concluir=(err)=>{ if(done) done(err,tile); };
+    (async()=>{
+      try{
+        const cache=await caches.open(TILE_CACHE);
+        let resp=await cache.match(url);
+        if(!resp && navigator.onLine){
+          try{
+            const net=await fetch(url,{cache:'no-store',mode:'cors'});
+            if(net && net.ok){ await cache.put(url,net.clone()); resp=net; }
+          }catch(_){ }
+        }
+        if(!resp) throw new Error('Tile não disponível offline');
+        const blob=await resp.blob();
+        objectUrl=URL.createObjectURL(blob);
+        tile.onload=()=>{ try{URL.revokeObjectURL(objectUrl)}catch(_){}; concluir(null); };
+        tile.onerror=()=>{ try{URL.revokeObjectURL(objectUrl)}catch(_){}; concluir(new Error('Falha ao abrir tile')); };
+        tile.src=objectUrl;
+      }catch(e){
+        tile.className='leaflet-tile';
+        concluir(e);
+      }
+    })();
+    return tile;
+  }
+});
+function campoCachedTileLayer(url,opts){return new CampoCachedTileLayer(url,opts||{})}
+
 const map=L.map('map').setView([-19.45,-44.25],9);
-const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+const tiles=campoCachedTileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
 const demandLayer=L.layerGroup().addTo(map), opLayer=L.layerGroup().addTo(map), planLayer=L.layerGroup().addTo(map);
 const pafLayer=L.layerGroup().addTo(map), carAreaLayer=L.layerGroup().addTo(map);
 const controleCamadasCampo=L.control.layers(null,{'Demandas':demandLayer,'Operações':opLayer,'Planejamento':planLayer,'Áreas PAF':pafLayer,'CAR':carAreaLayer},{collapsed:true}).addTo(map);
 
-// V1.5 — adiciona bases online sem alterar a inicialização original do mapa.
-const sateliteCampoV15=L.tileLayer(
-  'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-  {maxZoom:22,subdomains:['mt0','mt1','mt2','mt3'],attribution:'Google'}
+// V1.8 — Satélite Esri preparado para funcionamento online e offline.
+const sateliteCampoV15=campoCachedTileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {maxZoom:19,attribution:'Tiles © Esri — Sources: Esri, Maxar, Earthstar Geographics e GIS User Community'}
 );
+// Híbrido permanece online; o Satélite acima é a camada destinada ao uso offline.
 const sateliteHibridoCampoV15=L.tileLayer(
   'https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
   {maxZoom:22,subdomains:['mt0','mt1','mt2','mt3'],attribution:'Google'}
@@ -405,7 +448,40 @@ document.getElementById('btnPdfOps').onclick=prepararPdfsOperacoes;
 document.getElementById('btnPdfPrep').onclick=prepararPdfsOffline;
 document.getElementById('btnPdfLimpar').onclick=limparPdfsOffline;
 document.getElementById('gps').onclick=()=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],16),e=>alert('Localização indisponível: '+e.message),{enableHighAccuracy:true,timeout:15000}):alert('GPS não disponível.');
-document.getElementById('tiles').onclick=async()=>{if(!navigator.onLine)return alert('Conecte-se à internet para preparar o mapa.');const z0=Math.max(8,map.getZoom()-1),z1=Math.min(17,map.getZoom()+2),b=map.getBounds(),urls=[];function tx(lon,z){return Math.floor((lon+180)/360*2**z)}function ty(lat,z){lat=Math.max(-85.0511,Math.min(85.0511,lat));return Math.floor((1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*2**z)}for(let z=z0;z<=z1;z++){let x1=tx(b.getWest(),z),x2=tx(b.getEast(),z),y1=ty(b.getNorth(),z),y2=ty(b.getSouth(),z);for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++)urls.push(`https://tile.openstreetmap.org/${z}/${x}/${y}.png`)}if(urls.length>800)return alert('Área muito grande ('+urls.length+' partes). Aproxime o mapa.');const c=await caches.open(TILE_CACHE);let ok=0;for(let i=0;i<urls.length;i++){const u=urls[i];try{if(!(await c.match(u))){const r=await fetch(u,{cache:'reload'});if(r.ok)await c.put(u,r.clone())}ok++}catch(_){ }if(i%25===0)document.getElementById('sync').textContent='Preparando mapa: '+(i+1)+'/'+urls.length}alert('Mapa preparado: '+ok+' de '+urls.length+' partes salvas.');render()};
+document.getElementById('tiles').onclick=async()=>{
+  if(!navigator.onLine)return alert('Conecte-se à internet para preparar o mapa.');
+  const provider=document.getElementById('tileProvider')?.value||'osm';
+  const z0=Math.max(8,map.getZoom()-1),z1=Math.min(17,map.getZoom()+2),b=map.getBounds();
+  function tx(lon,z){return Math.floor((lon+180)/360*2**z)}
+  function ty(lat,z){lat=Math.max(-85.0511,Math.min(85.0511,lat));return Math.floor((1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*2**z)}
+  const lista=[];
+  for(let z=z0;z<=z1;z++){
+    const x1=tx(b.getWest(),z),x2=tx(b.getEast(),z),y1=ty(b.getNorth(),z),y2=ty(b.getSouth(),z);
+    for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++){
+      if(provider==='osm'||provider==='both') lista.push({tipo:'OpenStreetMap',url:`https://tile.openstreetmap.org/${z}/${x}/${y}.png`});
+      if(provider==='sat'||provider==='both') lista.push({tipo:'Satélite',url:`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`});
+    }
+  }
+  if(lista.length>1200)return alert('Área muito grande ('+lista.length+' partes). Aproxime o mapa ou prepare apenas uma camada por vez.');
+  const c=await caches.open(TILE_CACHE);let ok=0,falhas=0,pulados=0;
+  const s=document.getElementById('sync');
+  for(let i=0;i<lista.length;i++){
+    const item=lista[i],u=item.url;
+    try{
+      if(await c.match(u)){pulados++;ok++;}
+      else{
+        const r=await fetch(u,{cache:'no-store',mode:'cors'});
+        if(r&&r.ok){await c.put(u,r.clone());ok++;}else falhas++;
+      }
+    }catch(_){falhas++;}
+    if(i%20===0||i===lista.length-1){s.className='sync';s.textContent='Preparando '+item.tipo+': '+(i+1)+'/'+lista.length+' · '+ok+' salvo(s)';}
+  }
+  const nome=provider==='sat'?'Satélite':provider==='both'?'OpenStreetMap + Satélite':'OpenStreetMap';
+  s.className=falhas?'sync':'sync ok';
+  s.textContent='Mapa offline preparado: '+nome+' · '+ok+' tile(s) disponíveis'+(pulados?' · '+pulados+' já estavam salvos':'')+(falhas?' · '+falhas+' falha(s)':'')+'.';
+  alert('Mapa offline preparado: '+nome+'\n'+ok+' de '+lista.length+' partes disponíveis.'+(falhas?'\nFalhas: '+falhas:'')+'\n\nAgora a camada 🛰️ Satélite pode ser usada sem internet dentro da área preparada.');
+  render();
+};
 
 window.modoCampoReceberPacote=function(r){
   const s=document.getElementById('sync');
@@ -463,5 +539,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').then(
 
 
 <!-- Modo Campo V1.7 — interface CAR removida; PAF continua apenas como camada recebida -->
+
+<!-- Modo Campo V1.8 — Satélite Esri incorporado ao preparo e uso offline -->
 </body>
 </html>
