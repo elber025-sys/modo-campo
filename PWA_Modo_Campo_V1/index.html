@@ -188,7 +188,30 @@ const STORE='CAMPO_PACOTE_V2', TILE_CACHE='campo-tiles-v2';
 let somenteCAR=false;
 const PDF_CACHE='modo-campo-pdfs-v7', PDF_SYNC='MODO_CAMPO_PDF_SYNC_V7'; // mantém a mesma chave para preservar os dados da V3
 const map=L.map('map').setView([-19.45,-44.25],9);
+
+// V1.4 — controle de camadas base
+L.control.layers(
+  {
+    '🗺️ Mapa':tiles,
+    '🛰️ Satélite':sateliteCampo,
+    '🛰️ Satélite Híbrido':sateliteHibridoCampo
+  },
+  {},
+  {collapsed:true}
+).addTo(map);
+
 const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+
+// V1.4 — camadas base adicionais para uso online no Modo Campo.
+const sateliteCampo=L.tileLayer(
+  'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+  {maxZoom:22,subdomains:['mt0','mt1','mt2','mt3'],attribution:'Google'}
+);
+const sateliteHibridoCampo=L.tileLayer(
+  'https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+  {maxZoom:22,subdomains:['mt0','mt1','mt2','mt3'],attribution:'Google'}
+);
+
 const demandLayer=L.layerGroup().addTo(map), opLayer=L.layerGroup().addTo(map), planLayer=L.layerGroup().addTo(map);
 const pafLayer=L.layerGroup().addTo(map), carAreaLayer=L.layerGroup().addTo(map);
 L.control.layers(null,{'Demandas':demandLayer,'Operações':opLayer,'Planejamento':planLayer,'Áreas PAF':pafLayer,'CAR':carAreaLayer},{collapsed:true}).addTo(map);
@@ -442,5 +465,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').then(
 <!-- Modo Campo V1.2 — painel minimizado compacto e sem bloquear controles -->
 
 <!-- Modo Campo V1.3 — equipes/dias do planejamento normalizados -->
+
+<!-- Modo Campo V1.4 — Satélite e Satélite Híbrido restaurados -->
 </body>
 </html>
