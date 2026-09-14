@@ -445,7 +445,37 @@ function fecharPdfViewer(){
   if(pdfViewerBlobUrl){const u=pdfViewerBlobUrl;pdfViewerBlobUrl=null;setTimeout(()=>{try{URL.revokeObjectURL(u)}catch(_){}},500)}
 }
 function fecharPdfViewerFundo(e){if(e&&e.target&&e.target.id==='pdfViewerBg')fecharPdfViewer()}
-async function baixarPdfIndice(index,abrirDepois){const d=(pacote.demandas||[])[index];if(!d||!d.pdfUrl)throw new Error('Esta demanda não possui PDF.');const c=await caches.open(PDF_CACHE),u=pdfCacheUrl(d);let hit=await c.match(u);if(!hit){const r=await solicitarPdfBackend(index);const blob=b64Blob(r.base64,r.mime);await c.put(u,new Response(blob,{headers:{'Content-Type':r.mime||'application/pdf','X-Pdf-Name':encodeURIComponent(r.nome||('demanda_'+key(d)+'.pdf'))}}));hit=await c.match(u)}await atualizarPdfStatus();if(abrirDepois&&hit)await abrirRespostaPdfOffline(hit,d);return true}
+async function baixarPdfIndice(index,abrirDepois){const d=(pacote.demandas||[])[index];if(!d||!d.pdfUrl)throw new Error('Esta demanda não possui PDF.');const c=await caches.open(PDF_CACHE),u=pdfCacheUrl(d);let hit=await c.match(u);if(!hit){const r=await solicitarPdfBackend(index);const blob=b64Blob(r.base64,r.mime);
+    const cab=await blob.slice(0,5).text();
+    if(cab!=='%PDF-')throw new Error('O servidor não retornou um PDF válido. O arquivo não foi salvo offline.');
+    await c.put(u,new Response(blob,{headers:{'Content-Type':'application/pdf','X-Pdf-Name':encodeURIComponent(r.nome||('demanda_'+key(d)+'.pdf'))}}));
+    hit=await c.match(u)
+  }
+  await atualizarPdfStatus();
+  if(abrirDepois&&hit)await abrirRespostaPdfOffline(hit,d);
+  return true
+}
+
+async function respostaCacheEhPdfValidoV112(hit){
+  try{
+    if(!hit)return false;
+    const blob=await hit.clone().blob();
+    if(!blob||blob.size<5)return false;
+    const cab=await blob.slice(0,5).text();
+    return cab==='%PDF-';
+  }catch(_){return false}
+}
+async function obterPdfCacheValidoV112(d){
+  const c=await caches.open(PDF_CACHE);
+  const u=pdfCacheUrl(d);
+  let hit=await c.match(u);
+  if(hit && !(await respostaCacheEhPdfValidoV112(hit))){
+    // Remove automaticamente cache antigo/corrompido (HTML salvo como PDF).
+    try{await c.delete(u)}catch(_){}
+    hit=null;
+  }
+  return {cache:c,url:u,hit:hit};
+}
 window.abrirPdfDemanda=async function(k){
   const janela=window.open('about:blank','_blank');
   if(janela){
@@ -463,8 +493,9 @@ window.abrirPdfDemanda=async function(k){
 
   const d=pacote.demandas[idx];
   try{
-    const c=await caches.open(PDF_CACHE);
-    let hit=await c.match(pdfCacheUrl(d));
+    const estado=await obterPdfCacheValidoV112(d);
+    const c=estado.cache;
+    let hit=estado.hit;
 
     if(!hit){
       if(!navigator.onLine){
@@ -472,10 +503,11 @@ window.abrirPdfDemanda=async function(k){
         return alert('Este PDF ainda não foi preparado para uso offline. Conecte-se à internet e toque em “Preparar PDFs”.');
       }
       await baixarPdfIndice(idx,false);
-      hit=await c.match(pdfCacheUrl(d));
+      const estadoNovo=await obterPdfCacheValidoV112(d);
+      hit=estadoNovo.hit;
     }
 
-    if(!hit)throw new Error('O PDF não foi encontrado no armazenamento offline.');
+    if(!hit)throw new Error('O PDF não foi encontrado no armazenamento offline ou o arquivo baixado não é um PDF válido.');
 
     const blob=await hit.blob();
     if(!blob||blob.size===0)throw new Error('O PDF salvo está vazio.');
@@ -668,6 +700,6 @@ if('serviceWorker' in navigator){
 </div>
 
 
-<!-- Modo Campo V1.11 — abertura robusta de PDF offline em aba autorizada + validação %PDF -->
+<!-- Modo Campo V1.12 — cache PDF inválido removido automaticamente + novo download validado -->
 </body>
 </html>

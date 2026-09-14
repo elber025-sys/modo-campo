@@ -1,16 +1,32 @@
-MODO CAMPO V1.11 — PDF OFFLINE
+CORREÇÃO PDF OFFLINE — V1.12
 
-Correção principal:
-- A aba do PDF é aberta imediatamente no clique do usuário, antes de qualquer await.
-- Depois o PDF é lido do cache e carregado nessa aba.
-- Se nova aba for bloqueada, abre na própria aba como fallback.
-- O arquivo salvo é validado pelo cabeçalho %PDF-.
-- Se estiver corrompido, o sistema informa para baixar novamente.
+Há DUAS atualizações necessárias:
 
-Atualização:
-1. Substitua index.html e sw.js na pasta PWA_Modo_Campo_V1 do GitHub.
-2. Aguarde a publicação.
-3. Abra com internet e pressione Ctrl+F5.
-4. Feche e abra novamente.
-5. Teste um PDF já marcado como disponível offline.
-6. Depois desligue a internet e repita.
+1) APPS SCRIPT
+Substitua o arquivo Code atual pelo:
+Code_V7_0_15_PDF_OFFLINE_VALIDADO.gs
+
+Essa versão:
+- usa DriveApp para links do Google Drive sempre que possível;
+- só aceita arquivo cuja assinatura real seja %PDF-;
+- rejeita páginas HTML/login/visualização do Drive;
+- mantém o limite de 8 MB.
+
+Depois crie uma NOVA VERSÃO da implantação /exec.
+
+2) GITHUB PAGES — MODO CAMPO
+Substitua index.html e sw.js pelos arquivos deste pacote.
+
+A V1.12:
+- identifica PDFs antigos inválidos que já estavam no cache;
+- apaga automaticamente apenas o PDF inválido;
+- quando online, baixa novamente usando o backend corrigido;
+- só grava no cache se o conteúdo começar com %PDF-.
+
+ORDEM DO TESTE
+1. Atualize Code.gs e publique nova versão do Web App.
+2. Atualize index.html e sw.js no GitHub.
+3. Abra Modo Campo com internet e faça Ctrl+F5.
+4. Reenvie o pacote pelo mapa principal (necessário para gerar código/chave novos).
+5. Toque no PDF. O cache inválido antigo será descartado e o PDF será baixado de novo.
+6. Depois desligue a internet e teste o mesmo PDF.
