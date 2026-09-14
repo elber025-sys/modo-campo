@@ -1,0 +1,36 @@
+MODO CAMPO V1.9 — OFFLINE COMPLETO
+
+ARQUIVOS:
+- index.html
+- sw.js
+
+COMO PUBLICAR NO GITHUB PAGES:
+1. Abra o repositório "modo-campo".
+2. Entre na pasta PWA_Modo_Campo_V1.
+3. Substitua o index.html antigo pelo index.html desta pasta.
+4. Substitua/crie o sw.js pelo sw.js desta pasta.
+5. Aguarde o GitHub Pages publicar a atualização.
+
+IMPORTANTE — PRIMEIRO PREPARO:
+1. Abra o Modo Campo COM INTERNET após publicar a nova versão.
+2. Recarregue a página uma vez.
+3. No seletor de camadas estarão:
+   - OpenStreetMap
+   - Satélite
+   - Satélite Híbrido
+4. Escolha "Satélite" ou "Ambos" em "Preparar mapa offline".
+5. Enquadre no mapa a região que será usada em campo.
+6. Clique em "Preparar mapa visível".
+7. Espere a mensagem confirmar que os tiles foram salvos.
+8. Só depois desligue a internet para testar.
+
+NO TESTE OFFLINE:
+- feche e abra novamente a página;
+- Demandas, Operações, Planejamento e filtros continuam locais;
+- OpenStreetMap e Satélite funcionam dentro da área previamente preparada;
+- Satélite Híbrido (Google) continua sendo uma camada online;
+- PDFs só funcionam offline quando previamente preparados.
+
+Se o navegador estiver mantendo uma versão antiga:
+- com internet, abra a página e recarregue;
+- feche a aba e abra de novo antes do teste offline.
