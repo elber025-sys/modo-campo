@@ -1,5 +1,5 @@
-const APP_CACHE = 'modo-campo-app-v1.10.0';
-const RUNTIME_CACHE = 'modo-campo-runtime-v1.10.0';
+const APP_CACHE = 'modo-campo-app-v1.11.0';
+const RUNTIME_CACHE = 'modo-campo-runtime-v1.11.0';
 
 const CORE_LOCAL = [
   './',

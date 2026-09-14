@@ -446,7 +446,75 @@ function fecharPdfViewer(){
 }
 function fecharPdfViewerFundo(e){if(e&&e.target&&e.target.id==='pdfViewerBg')fecharPdfViewer()}
 async function baixarPdfIndice(index,abrirDepois){const d=(pacote.demandas||[])[index];if(!d||!d.pdfUrl)throw new Error('Esta demanda não possui PDF.');const c=await caches.open(PDF_CACHE),u=pdfCacheUrl(d);let hit=await c.match(u);if(!hit){const r=await solicitarPdfBackend(index);const blob=b64Blob(r.base64,r.mime);await c.put(u,new Response(blob,{headers:{'Content-Type':r.mime||'application/pdf','X-Pdf-Name':encodeURIComponent(r.nome||('demanda_'+key(d)+'.pdf'))}}));hit=await c.match(u)}await atualizarPdfStatus();if(abrirDepois&&hit)await abrirRespostaPdfOffline(hit,d);return true}
-window.abrirPdfDemanda=async function(k){const idx=(pacote.demandas||[]).findIndex(d=>demandaKey(d)===k);if(idx<0)return alert('Demanda não encontrada no pacote offline.');const d=pacote.demandas[idx];try{const c=await caches.open(PDF_CACHE),hit=await c.match(pdfCacheUrl(d));if(hit){await abrirRespostaPdfOffline(hit,d);return}if(!navigator.onLine)return alert('Este PDF ainda não foi preparado para uso offline. Conecte-se à internet e toque em “Preparar PDFs”.');await baixarPdfIndice(idx,true)}catch(e){alert('Não foi possível abrir o PDF: '+e.message)}};
+window.abrirPdfDemanda=async function(k){
+  const janela=window.open('about:blank','_blank');
+  if(janela){
+    try{
+      janela.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Abrindo PDF…</title></head><body style="font-family:Arial,sans-serif;padding:28px"><h3>Abrindo PDF offline…</h3><p>Aguarde.</p></body></html>');
+      janela.document.close();
+    }catch(_){}
+  }
+
+  const idx=(pacote.demandas||[]).findIndex(d=>demandaKey(d)===k);
+  if(idx<0){
+    try{if(janela)janela.close()}catch(_){}
+    return alert('Demanda não encontrada no pacote offline.');
+  }
+
+  const d=pacote.demandas[idx];
+  try{
+    const c=await caches.open(PDF_CACHE);
+    let hit=await c.match(pdfCacheUrl(d));
+
+    if(!hit){
+      if(!navigator.onLine){
+        try{if(janela)janela.close()}catch(_){}
+        return alert('Este PDF ainda não foi preparado para uso offline. Conecte-se à internet e toque em “Preparar PDFs”.');
+      }
+      await baixarPdfIndice(idx,false);
+      hit=await c.match(pdfCacheUrl(d));
+    }
+
+    if(!hit)throw new Error('O PDF não foi encontrado no armazenamento offline.');
+
+    const blob=await hit.blob();
+    if(!blob||blob.size===0)throw new Error('O PDF salvo está vazio.');
+
+    const cab=await blob.slice(0,5).text();
+    if(cab!=='%PDF-'){
+      throw new Error('O arquivo salvo não é um PDF válido. Limpe este PDF e baixe novamente.');
+    }
+
+    const pdfBlob = blob.type==='application/pdf'
+      ? blob
+      : new Blob([await blob.arrayBuffer()],{type:'application/pdf'});
+
+    const url=URL.createObjectURL(pdfBlob);
+
+    if(janela){
+      try{
+        janela.location.replace(url);
+      }catch(e){
+        try{janela.location.href=url}catch(_){}
+      }
+    }else{
+      // Fallback quando o navegador bloqueia nova aba:
+      // navega na própria aba; botão Voltar retorna ao Modo Campo.
+      window.location.href=url;
+    }
+
+    setTimeout(()=>{try{URL.revokeObjectURL(url)}catch(_){}},10*60*1000);
+  }catch(e){
+    try{
+      if(janela && !janela.closed){
+        janela.document.open();
+        janela.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Erro ao abrir PDF</title></head><body style="font-family:Arial,sans-serif;padding:28px"><h3>Não foi possível abrir o PDF</h3><p>'+String(e.message||e).replace(/</g,'&lt;')+'</p></body></html>');
+        janela.document.close();
+      }
+    }catch(_){}
+    alert('Não foi possível abrir o PDF: '+e.message);
+  }
+};
 window.salvarPdfDemanda=async function(k){const idx=(pacote.demandas||[]).findIndex(d=>demandaKey(d)===k);if(idx<0)return alert('Demanda não encontrada no pacote.');const d=pacote.demandas[idx];if(!d.pdfUrl)return alert('Esta demanda não possui PDF.');try{if(await pdfEstaOffline(d))return alert('Este PDF já está salvo offline.');if(!navigator.onLine)return alert('Conecte-se à internet para salvar este PDF.');await baixarPdfIndice(idx,false);alert('PDF da demanda '+key(d)+' salvo para uso offline.')}catch(e){alert('Não foi possível salvar o PDF: '+e.message)}};
 function indicesPdfsDasDemandas(ds){const keys=new Set((ds||[]).map(demandaKey));return pdfDemandas().filter(x=>keys.has(demandaKey(x.d)))}
 async function prepararListaPdfs(arr,titulo){if(!arr.length)return alert('Nenhum PDF encontrado em '+titulo+'.');const meta=syncPdfMeta();if(!meta||!meta.api||!meta.codigo||!meta.chave)return alert('Reenvie o pacote pelo mapa online para autorizar o download dos PDFs.');if(!navigator.onLine)return alert('Conecte-se à internet para preparar os PDFs.');const el=document.getElementById('pdfStatus'),c=await caches.open(PDF_CACHE);let ok=0,pulados=0,falhas=[];for(let pos=0;pos<arr.length;pos++){const x=arr[pos],u=pdfCacheUrl(x.d);if(await c.match(u)){pulados++;ok++;continue}if(el)el.innerHTML=esc(titulo)+' · baixando <b>'+(pos+1)+'/'+arr.length+'</b> · '+esc(key(x.d));try{await baixarPdfIndice(x.i,false);ok++}catch(e){falhas.push(key(x.d)+': '+e.message)}}await atualizarPdfStatus();let msg=titulo+': '+ok+' de '+arr.length+' PDF(s) disponíveis offline.';if(pulados)msg+=' '+pulados+' já estavam salvos.';if(falhas.length)msg+=' '+falhas.length+' falha(s).';alert(msg+(falhas.length?'\n\n'+falhas.slice(0,8).join('\n'):''))}
@@ -600,6 +668,6 @@ if('serviceWorker' in navigator){
 </div>
 
 
-<!-- Modo Campo V1.10 — visualizador interno para PDFs offline -->
+<!-- Modo Campo V1.11 — abertura robusta de PDF offline em aba autorizada + validação %PDF -->
 </body>
 </html>

@@ -1,18 +1,16 @@
-MODO CAMPO V1.10 — CORREÇÃO DE PDF OFFLINE
+MODO CAMPO V1.11 — PDF OFFLINE
 
-ALTERAÇÃO PRINCIPAL
-- PDFs já salvos no aparelho agora abrem dentro do próprio Modo Campo.
-- Não usa mais window.open() para o PDF, evitando bloqueio de popup.
-- O botão "Baixar" permanece disponível dentro do visualizador.
+Correção principal:
+- A aba do PDF é aberta imediatamente no clique do usuário, antes de qualquer await.
+- Depois o PDF é lido do cache e carregado nessa aba.
+- Se nova aba for bloqueada, abre na própria aba como fallback.
+- O arquivo salvo é validado pelo cabeçalho %PDF-.
+- Se estiver corrompido, o sistema informa para baixar novamente.
 
-COMO ATUALIZAR
-1. Substitua o index.html da pasta PWA_Modo_Campo_V1 no GitHub.
-2. Substitua também o sw.js.
-3. Aguarde o GitHub Pages publicar.
-4. Abra o Modo Campo com internet.
-5. Faça Ctrl+F5 uma vez.
-6. Feche e abra novamente a página.
-7. Teste um PDF que já apareça como "disponível offline".
-8. Depois desligue a internet e repita o teste.
-
-Os PDFs que já estavam salvos no cache "modo-campo-pdfs-v7" são preservados.
+Atualização:
+1. Substitua index.html e sw.js na pasta PWA_Modo_Campo_V1 do GitHub.
+2. Aguarde a publicação.
+3. Abra com internet e pressione Ctrl+F5.
+4. Feche e abra novamente.
+5. Teste um PDF já marcado como disponível offline.
+6. Depois desligue a internet e repita.
