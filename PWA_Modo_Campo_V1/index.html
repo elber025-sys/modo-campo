@@ -146,14 +146,7 @@
     <button class="btn sec" id="gps">📍 Minha localização</button>
     <button class="btn sec" id="tiles">⬇️ Preparar mapa visível</button>
   </div>
-  <div class="pdfbox" style="margin-top:8px">
-    <b>🌿 CAR / Áreas PAF</b>
-    <div class="row" style="margin-top:6px">
-      <button class="btn sec" id="btnCarOnly">🌿 Pontos em CAR</button>
-      <button class="btn pri" id="btnCarOps">📁 Operações CAR</button>
-    </div>
-    <div id="geoStatus" class="pdfstat">Os perímetros enviados pelo mapa online ficam disponíveis também sem internet.</div>
-  </div>
+  
   <div class="filters">
     <b>🔎 Localizar demandas</b>
     <input id="fBusca" placeholder="Código, município, natureza, endereço ou CAR">
@@ -441,9 +434,9 @@ window.baixarPafCampo=i=>{const a=(pacote.areasPAF||[])[+i];if(a)geoAreaKml(a,'A
 window.baixarCarCampo=i=>{const a=(pacote.carAreas||[])[+i];if(a)geoAreaKml(a,'CAR')};
 function addOpCampo(a,origem){const ps=(a.coords||[]).map(x=>({lat:+x[0],lng:+x[1]})).filter(x=>isFinite(x.lat)&&isFinite(x.lng));if(ps.length<3)return false;const ds=(pacote.demandas||[]).filter(d=>{const c=coord(d);return c&&pontoDentroPoligono(c[0],c[1],ps)}),b=L.latLngBounds(ps.map(x=>[x.lat,x.lng])),c=b.getCenter();pacote.operacoes=pacote.operacoes||[];pacote.operacoes.push({id:'campo_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),nome:'OPERAÇÃO '+(pacote.operacoes.length+1),status:'PLANEJADA',geometria:'POLIGONO',poligono:ps,centro:{lat:c.lat,lng:c.lng},raio:0,origemArea:origem,demandasOriginais:ds});localStorage.setItem(STORE,JSON.stringify(pacote));render();return true}
 window.criarOpPafCampo=i=>{const a=(pacote.areasPAF||[])[+i];if(a&&addOpCampo(a,'AREA PAF '+(a.id||'')))alert('Operação criada no Modo Campo com o perímetro PAF.')};
-window.criarOpCarCampo=i=>{const a=(pacote.carAreas||[])[+i];if(a&&addOpCampo(a,'CAR '+(a.car||'')))alert('Operação criada no Modo Campo com o perímetro do CAR.')};
-document.getElementById('btnCarOnly').onclick=()=>{somenteCAR=!somenteCAR;document.getElementById('btnCarOnly').className='btn '+(somenteCAR?'pri':'sec');document.getElementById('btnCarOnly').textContent=somenteCAR?'🌿 Somente CAR ✓':'🌿 Pontos em CAR';render()};
-document.getElementById('btnCarOps').onclick=()=>{const aa=pacote.carAreas||[];if(!aa.length)return alert('Este pacote ainda não possui perímetros CAR. No mapa online, use “Localizar pontos em CAR” e envie novamente ao Modo Campo.');if(!confirm('Criar '+aa.length+' operação(ões), uma para cada CAR enviado?'))return;let n=0;aa.forEach(a=>{if(addOpCampo(a,'CAR '+(a.car||'')))n++});alert(n+' operação(ões) CAR criada(s) no aparelho.')};
+
+
+
 
 ['fBusca'].forEach(id=>document.getElementById(id)?.addEventListener('input',render));['fPrazo','fTipo','fMun','fEquipe','fDia','fSomentePlano'].forEach(id=>document.getElementById(id)?.addEventListener('change',()=>{if(id==='fEquipe')popularFiltrosV4();render()}));
 document.getElementById('limparFiltro').onclick=()=>{['fBusca'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});['fPrazo','fTipo','fMun','fEquipe','fDia'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});document.getElementById('fSomentePlano').checked=false;popularFiltrosV4();render()};
@@ -466,5 +459,9 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').then(
 <!-- Modo Campo V1.3 — equipes/dias do planejamento normalizados -->
 
 <!-- Modo Campo V1.5 — V1.3 estável + Satélite/Híbrido adicionados sem substituir mapa-base -->
+
+
+
+<!-- Modo Campo V1.7 — interface CAR removida; PAF continua apenas como camada recebida -->
 </body>
 </html>
