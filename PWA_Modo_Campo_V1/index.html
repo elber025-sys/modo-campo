@@ -111,6 +111,11 @@
   }
 }
 </style>
+
+<style id="v15-layer-control-fix">
+.leaflet-control-layers{pointer-events:auto!important;z-index:1200!important}
+.leaflet-control-layers-expanded{max-height:70vh;overflow:auto}
+</style>
 </head>
 <body>
 <header><b>📲 Demandas Operacionais — Modo Campo</b><span id="net" class="badge">...</span></header>
@@ -188,33 +193,27 @@ const STORE='CAMPO_PACOTE_V2', TILE_CACHE='campo-tiles-v2';
 let somenteCAR=false;
 const PDF_CACHE='modo-campo-pdfs-v7', PDF_SYNC='MODO_CAMPO_PDF_SYNC_V7'; // mantém a mesma chave para preservar os dados da V3
 const map=L.map('map').setView([-19.45,-44.25],9);
-
-// V1.4 — controle de camadas base
-L.control.layers(
-  {
-    '🗺️ Mapa':tiles,
-    '🛰️ Satélite':sateliteCampo,
-    '🛰️ Satélite Híbrido':sateliteHibridoCampo
-  },
-  {},
-  {collapsed:true}
-).addTo(map);
-
 const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+const demandLayer=L.layerGroup().addTo(map), opLayer=L.layerGroup().addTo(map), planLayer=L.layerGroup().addTo(map);
+const pafLayer=L.layerGroup().addTo(map), carAreaLayer=L.layerGroup().addTo(map);
+const controleCamadasCampo=L.control.layers(null,{'Demandas':demandLayer,'Operações':opLayer,'Planejamento':planLayer,'Áreas PAF':pafLayer,'CAR':carAreaLayer},{collapsed:true}).addTo(map);
 
-// V1.4 — camadas base adicionais para uso online no Modo Campo.
-const sateliteCampo=L.tileLayer(
+// V1.5 — adiciona bases online sem alterar a inicialização original do mapa.
+const sateliteCampoV15=L.tileLayer(
   'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
   {maxZoom:22,subdomains:['mt0','mt1','mt2','mt3'],attribution:'Google'}
 );
-const sateliteHibridoCampo=L.tileLayer(
+const sateliteHibridoCampoV15=L.tileLayer(
   'https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
   {maxZoom:22,subdomains:['mt0','mt1','mt2','mt3'],attribution:'Google'}
 );
+try{
+  controleCamadasCampo.addBaseLayer(sateliteCampoV15,'🛰️ Satélite');
+  controleCamadasCampo.addBaseLayer(sateliteHibridoCampoV15,'🛰️ Satélite Híbrido');
+}catch(e){
+  console.warn('Não foi possível acrescentar as bases Satélite/Híbrido:',e);
+}
 
-const demandLayer=L.layerGroup().addTo(map), opLayer=L.layerGroup().addTo(map), planLayer=L.layerGroup().addTo(map);
-const pafLayer=L.layerGroup().addTo(map), carAreaLayer=L.layerGroup().addTo(map);
-L.control.layers(null,{'Demandas':demandLayer,'Operações':opLayer,'Planejamento':planLayer,'Áreas PAF':pafLayer,'CAR':carAreaLayer},{collapsed:true}).addTo(map);
 let pacote={demandas:[],operacoes:[],planejamento:[],localStorage:{}};
 const NAV_STORE='CAMPO_NAV_V5';let navState={};
 function navId(){const e=document.getElementById('fEquipe')?.value||'',d=document.getElementById('fDia')?.value||'';return e&&d?e+'|'+d:''}
@@ -466,6 +465,6 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').then(
 
 <!-- Modo Campo V1.3 — equipes/dias do planejamento normalizados -->
 
-<!-- Modo Campo V1.4 — Satélite e Satélite Híbrido restaurados -->
+<!-- Modo Campo V1.5 — V1.3 estável + Satélite/Híbrido adicionados sem substituir mapa-base -->
 </body>
 </html>
